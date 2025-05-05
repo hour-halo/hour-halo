@@ -1,0 +1,45 @@
+/* Layout fixes to ensure all content is visible */
+
+/* Increase the main content area height and ensure proper scrolling */
+main.flex-1 {
+  min-height: 100%;
+  padding-bottom: 100px !important; /* Extra padding at the bottom */
+}
+
+/* Ensure the view container has enough space */
+#view-container {
+  padding-bottom: 80px !important;
+}
+
+/* Fix for the days list to ensure all days are visible */
+.ios-card {
+  margin-bottom: 80px !important; /* Add extra margin at the bottom */
+}
+
+/* Make sure the last item in the list is fully visible */
+.ios-list-item:last-child {
+  margin-bottom: 0;
+  border-bottom: none;
+  padding-bottom: 16px !important; /* Extra padding for the last item */
+}
+
+/* Specific fix for Saturday (6th item) */
+.ios-list-item:nth-child(6) {
+  padding-bottom: 16px !important;
+}
+
+/* Specific fix for Sunday (7th item) */
+.ios-list-item:nth-child(7) {
+  padding-bottom: 16px !important;
+}
+
+/* Adjust the bottom navigation to ensure it doesn't overlap content */
+.ios-nav-bar {
+  z-index: 50 !important;
+}
+
+/* Ensure proper scrolling on the main content area */
+.overflow-y-auto {
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+}

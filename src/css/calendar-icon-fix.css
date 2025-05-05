@@ -1,0 +1,30 @@
+/* Specific fix for the calendar icon in the header */
+
+.week-header .week-view-calendar-icon {
+  width: 14px !important;
+  height: 14px !important;
+  max-width: 14px !important;
+  max-height: 14px !important;
+  stroke-width: 1.5 !important;
+}
+
+.week-header svg {
+  width: 14px !important;
+  height: 14px !important;
+  max-width: 14px !important;
+  max-height: 14px !important;
+  stroke-width: 1.5 !important;
+}
+
+/* Make the container smaller */
+.week-header .w-7 {
+  width: 28px !important;
+  height: 28px !important;
+  max-width: 28px !important;
+  max-height: 28px !important;
+}
+
+/* Fix for the calendar icon in the header */
+.week-header path {
+  stroke-width: 1.5 !important;
+}

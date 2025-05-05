@@ -1,0 +1,82 @@
+/* iOS-style navigation bar */
+
+.ios-nav-bar-container {
+  width: 100%;
+  padding: 8px 0;
+  margin: 0;
+}
+
+.ios-nav-bar-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  position: relative;
+}
+
+/* Navigation buttons */
+.ios-nav-button {
+  background: none;
+  border: none;
+  color: #007aff;
+  font-size: 16px;
+  font-weight: 400;
+  padding: 8px 0;
+  cursor: pointer;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  -webkit-appearance: none;
+  appearance: none;
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.ios-nav-button:active {
+  opacity: 0.6;
+}
+
+.dark .ios-nav-button {
+  color: #0a84ff;
+}
+
+/* Left and right button positioning */
+.ios-nav-button-left {
+  justify-content: flex-start;
+  text-align: left;
+  margin-right: 10px;
+}
+
+.ios-nav-button-right {
+  justify-content: flex-end;
+  text-align: right;
+  margin-left: 10px;
+}
+
+/* Chevron and label styling */
+.ios-nav-chevron {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.ios-nav-label {
+  font-size: 16px;
+  font-weight: 400;
+  margin: 0 4px;
+}
+
+/* Title styling */
+.ios-nav-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: #000;
+  text-align: center;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  flex: 1;
+  white-space: nowrap;
+}
+
+.dark .ios-nav-title {
+  color: #fff;
+}

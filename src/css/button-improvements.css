@@ -1,0 +1,59 @@
+/* iOS-native button improvements */
+
+/* Improve the week action buttons to match iOS style */
+.week-action-button {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 8px 12px !important;
+  border-radius: 8px !important;
+  background-color: transparent !important;
+  transition: background-color 0.2s ease !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Copy button styling - iOS blue */
+.copy-button {
+  color: var(--ios-blue, #007aff) !important;
+}
+
+.dark .copy-button {
+  color: var(--ios-dark-blue, #0a84ff) !important;
+}
+
+/* Clear button styling - iOS red */
+.clear-button {
+  color: var(--ios-red, #ff3b30) !important;
+}
+
+.dark .clear-button {
+  color: var(--ios-dark-red, #ff453a) !important;
+}
+
+/* Button text - iOS style */
+.button-text {
+  font-size: 15px !important;
+  font-weight: 500 !important;
+  white-space: nowrap !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Helvetica, Arial, sans-serif !important;
+}
+
+/* Button active state - iOS style */
+.week-action-button:active {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+.dark .week-action-button:active {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Make sure the buttons are properly spaced */
+.week-header .flex.space-x-3 {
+  margin-left: 8px !important;
+}
+
+/* iOS-style icon sizing */
+.week-action-button svg {
+  display: none !important; /* Hide SVG icons in favor of text-only buttons */
+}

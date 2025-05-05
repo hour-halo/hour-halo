@@ -1,0 +1,122 @@
+/* iOS-native button styles */
+
+/* Button container for side-by-side buttons */
+.ios-button-container {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 16px;
+}
+
+.ios-button-container .ios-native-button {
+  flex: 1;
+  padding: 12px 0;
+  font-size: 16px;
+  font-weight: 500;
+  border-radius: 10px;
+}
+
+.ios-button-container .ios-native-button:first-child {
+  margin-right: 8px;
+}
+
+.ios-button-container .ios-native-button:last-child {
+  margin-left: 8px;
+}
+
+/* Base iOS button style */
+.ios-native-button {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background-color: transparent;
+  border: none;
+  transition: background-color 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* iOS blue button */
+.ios-blue-button {
+  color: var(--ios-blue, #007aff);
+}
+
+.ios-blue-button.filled {
+  background-color: var(--ios-blue, #007aff);
+  color: white;
+}
+
+.dark .ios-blue-button {
+  color: var(--ios-dark-blue, #0a84ff);
+}
+
+.dark .ios-blue-button.filled {
+  background-color: var(--ios-dark-blue, #0a84ff);
+  color: white;
+}
+
+/* iOS red button */
+.ios-red-button {
+  color: var(--ios-red, #ff3b30);
+}
+
+.ios-red-button.filled {
+  background-color: var(--ios-red, #ff3b30);
+  color: white;
+}
+
+.dark .ios-red-button {
+  color: var(--ios-dark-red, #ff453a);
+}
+
+.dark .ios-red-button.filled {
+  background-color: var(--ios-dark-red, #ff453a);
+  color: white;
+}
+
+/* iOS green button */
+.ios-green-button {
+  color: var(--ios-green, #34c759);
+}
+
+.dark .ios-green-button {
+  color: var(--ios-dark-green, #30d158);
+}
+
+/* Week navigation buttons */
+.week-header .ios-native-button.flex.items-center {
+  font-size: 14px;
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+}
+
+/* Week navigation button icons */
+.week-header .ios-native-button svg {
+  width: 16px;
+  height: 16px;
+  display: inline-block;
+}
+
+/* Week view specific button styles */
+.week-header .week-action-button {
+  font-size: 15px;
+  font-weight: 500;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background-color: transparent;
+  border: none;
+  transition: background-color 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Active state for iOS buttons */
+.ios-native-button:active,
+.week-action-button:active {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.dark .ios-native-button:active,
+.dark .week-action-button:active {
+  background-color: rgba(255, 255, 255, 0.05);
+}

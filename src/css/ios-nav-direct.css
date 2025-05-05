@@ -1,0 +1,122 @@
+/* Direct iOS-style navigation styling */
+
+.ios-nav-container {
+  background-color: #f2f2f7;
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.dark .ios-nav-container {
+  background-color: #1c1c1e;
+}
+
+.ios-nav-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.ios-nav-arrow {
+  background: none;
+  border: none;
+  color: #007aff;
+  font-size: 15px;
+  font-weight: 500;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  -webkit-appearance: none;
+  appearance: none;
+  border-radius: 8px;
+  transition: background-color 0.2s ease;
+}
+
+.ios-nav-arrow:active {
+  background-color: rgba(0, 122, 255, 0.1);
+}
+
+.dark .ios-nav-arrow {
+  color: #0a84ff;
+}
+
+.dark .ios-nav-arrow:active {
+  background-color: rgba(10, 132, 255, 0.2);
+}
+
+.ios-nav-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #000;
+  text-align: center;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  padding: 0 8px;
+}
+
+.dark .ios-nav-title {
+  color: #fff;
+}
+
+/* Week actions styling */
+.week-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 0 4px;
+}
+
+/* iOS-style native buttons */
+.ios-native-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 500;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  transition: all 0.2s ease;
+  border: none;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+}
+
+.ios-blue-button {
+  background-color: rgba(0, 122, 255, 0.1);
+  color: #007aff;
+}
+
+.ios-blue-button:active {
+  background-color: rgba(0, 122, 255, 0.2);
+}
+
+.dark .ios-blue-button {
+  background-color: rgba(10, 132, 255, 0.2);
+  color: #0a84ff;
+}
+
+.dark .ios-blue-button:active {
+  background-color: rgba(10, 132, 255, 0.3);
+}
+
+.ios-red-button {
+  background-color: rgba(255, 59, 48, 0.1);
+  color: #ff3b30;
+}
+
+.ios-red-button:active {
+  background-color: rgba(255, 59, 48, 0.2);
+}
+
+.dark .ios-red-button {
+  background-color: rgba(255, 69, 58, 0.2);
+  color: #ff453a;
+}
+
+.dark .ios-red-button:active {
+  background-color: rgba(255, 69, 58, 0.3);
+}

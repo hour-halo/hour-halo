@@ -1,0 +1,31 @@
+/* Modal icon fixes */
+
+/* Target the large clock icon in the modal */
+modal-dialog .hours-icon {
+  width: 18px !important;
+  height: 18px !important;
+  max-width: 18px !important;
+  max-height: 18px !important;
+  stroke-width: 1.5 !important;
+}
+
+/* Target the large dollar icon in the modal */
+modal-dialog .tips-icon {
+  width: 18px !important;
+  height: 18px !important;
+  max-width: 18px !important;
+  max-height: 18px !important;
+  stroke-width: 1.5 !important;
+}
+
+/* Target all SVG elements in the modal */
+modal-dialog svg {
+  width: 18px !important;
+  height: 18px !important;
+  stroke-width: 1.5 !important;
+}
+
+/* Target all paths in the modal */
+modal-dialog path {
+  stroke-width: 1.5 !important;
+}

@@ -1,0 +1,24 @@
+/* Hide number input spinners */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox */
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* Ensure input text doesn't shift when scrolling */
+input[type="number"] {
+  position: relative;
+  z-index: 0;
+}
+
+/* Ensure labels stay fixed */
+.input-label {
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
+}

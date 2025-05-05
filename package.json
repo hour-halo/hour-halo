@@ -1,0 +1,22 @@
+{
+  "name": "hour-halo",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^3.3.3",
+    "vite": "^6.3.1"
+  },
+  "dependencies": {
+    "chart.js": "^4.4.9",
+    "dexie": "^4.0.11",
+    "lit": "^3.3.0"
+  }
+}

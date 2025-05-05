@@ -1,0 +1,40 @@
+/* Specific fix for the Saturday item in the days list */
+
+/* Target Saturday specifically */
+.ios-card > div:nth-child(6) {
+  padding-bottom: 16px !important;
+  margin-bottom: 8px !important;
+  border-bottom: none !important;
+}
+
+/* Target Sunday specifically */
+.ios-card > div:nth-child(7) {
+  padding-bottom: 16px !important;
+  margin-bottom: 8px !important;
+  border-bottom: none !important;
+}
+
+/* Add extra space at the bottom of the card */
+.ios-card {
+  padding-bottom: 16px !important;
+  margin-bottom: 120px !important;
+}
+
+/* Ensure the main content area has enough space */
+main.flex-1 {
+  padding-bottom: 120px !important;
+}
+
+/* Fix for the view container */
+#view-container {
+  padding-bottom: 120px !important;
+}
+
+/* Fix for the bottom navigation */
+.ios-nav-bar {
+  position: fixed !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 100 !important;
+}

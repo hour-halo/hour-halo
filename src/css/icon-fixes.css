@@ -1,0 +1,66 @@
+/* Icon fixes for iOS-style UI */
+
+/* Fix for the large calendar icon in the week header */
+.week-view-calendar-icon {
+  width: 18px !important;
+  height: 18px !important;
+  max-width: 18px !important;
+  max-height: 18px !important;
+  stroke-width: 1.5 !important;
+}
+
+/* Fix for the large clock icon in the edit hours modal */
+.hours-icon {
+  width: 16px !important;
+  height: 16px !important;
+  max-width: 16px !important;
+  max-height: 16px !important;
+  stroke-width: 1.5 !important;
+}
+
+/* Fix for the large dollar icon in the edit hours modal */
+.tips-icon {
+  width: 16px !important;
+  height: 16px !important;
+  max-width: 16px !important;
+  max-height: 16px !important;
+  stroke-width: 1.5 !important;
+}
+
+/* General SVG icon size fixes */
+svg.icon-fix {
+  stroke-width: 1.5 !important;
+}
+
+/* Fix for the large icons in the modal */
+modal-dialog svg {
+  width: 16px !important;
+  height: 16px !important;
+  stroke-width: 1.5 !important;
+}
+
+/* Fix for the large SVG icons in the app */
+.ios-card svg, .week-header svg, .earnings-display svg {
+  width: 16px !important;
+  height: 16px !important;
+  stroke-width: 1.5 !important;
+}
+
+/* Fix for the large icons in the modal */
+.ios-form-label svg {
+  width: 14px !important;
+  height: 14px !important;
+  stroke-width: 1.5 !important;
+}
+
+/* Fix for the large icons in the modal */
+modal-dialog path {
+  stroke-width: 1.5 !important;
+}
+
+/* Fix for the large icons in the modal */
+.ios-form-group svg {
+  width: 16px !important;
+  height: 16px !important;
+  stroke-width: 1.5 !important;
+}

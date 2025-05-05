@@ -1,0 +1,56 @@
+/* Additional fixes for iOS-style navigation */
+
+/* Fix for any white boxes that might appear */
+.ios-nav-button::before,
+.ios-nav-button::after,
+.ios-nav-bar-content::before,
+.ios-nav-bar-content::after {
+  content: none !important;
+  display: none !important;
+}
+
+/* Hide any checkboxes */
+.ios-nav-bar-container input[type="checkbox"],
+.ios-nav-button input[type="checkbox"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  position: absolute !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* Ensure proper spacing */
+.ios-nav-button-left {
+  padding-left: 4px !important;
+}
+
+.ios-nav-button-right {
+  padding-right: 4px !important;
+}
+
+/* Ensure proper button appearance */
+.ios-nav-button {
+  background-color: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+}
+
+/* Ensure proper title positioning */
+.ios-nav-title {
+  max-width: 50% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  z-index: 1 !important;
+}
+
+/* Ensure proper chevron appearance */
+.ios-nav-chevron {
+  display: inline-block !important;
+  vertical-align: middle !important;
+  line-height: 1 !important;
+}

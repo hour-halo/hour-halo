@@ -1,0 +1,62 @@
+/* Direct icon fixes for iOS-style UI */
+
+/* Fix for the large calendar icon in the week header */
+.week-header svg {
+  width: 16px !important;
+  height: 16px !important;
+  max-width: 16px !important;
+  max-height: 16px !important;
+  stroke-width: 1.5 !important;
+}
+
+/* Additional fix for the calendar icon */
+.week-view-calendar-icon {
+  width: 16px !important;
+  height: 16px !important;
+  max-width: 16px !important;
+  max-height: 16px !important;
+  stroke-width: 1.5 !important;
+}
+
+/* Fix for the large icons in the modal */
+modal-dialog svg {
+  width: 16px !important;
+  height: 16px !important;
+  max-width: 16px !important;
+  max-height: 16px !important;
+  stroke-width: 1.5 !important;
+}
+
+/* Fix for the large icons in the form labels */
+.ios-form-label svg {
+  width: 14px !important;
+  height: 14px !important;
+  max-width: 14px !important;
+  max-height: 14px !important;
+  stroke-width: 1.5 !important;
+}
+
+/* Fix for the large icons in the bottom navigation */
+.ios-nav-item svg {
+  width: 20px !important;
+  height: 20px !important;
+  max-width: 20px !important;
+  max-height: 20px !important;
+  stroke-width: 1.5 !important;
+}
+
+/* Fix for the large icons in the day circles */
+.day-circle {
+  width: 36px !important;
+  height: 36px !important;
+  max-width: 36px !important;
+  max-height: 36px !important;
+}
+
+/* Fix for the large icons in the modal day circle */
+modal-dialog .day-circle {
+  width: 32px !important;
+  height: 32px !important;
+  max-width: 32px !important;
+  max-height: 32px !important;
+}
