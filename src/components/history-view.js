@@ -12,6 +12,7 @@ import {
   calculateTransactionStats
 } from '../js/history-manager.js';
 import { exportTransactionsToCSV } from '../js/export-manager.js';
+import { clearSamplePayments } from '../js/clear-sample-data.js';
 
 export class HistoryView extends LitElement {
   static properties = {
@@ -24,7 +25,9 @@ export class HistoryView extends LitElement {
     summaryStats: { type: Object },
     showDetailModal: { type: Boolean },
     selectedTransaction: { type: Object },
-    activeDateRange: { type: String }
+    activeDateRange: { type: String },
+    isClearing: { type: Boolean },
+    showClearConfirmation: { type: Boolean }
   };
 
   static styles = css`
@@ -443,10 +446,16 @@ export class HistoryView extends LitElement {
     this.transactions = [];
     this.groupedTransactions = [];
     this.isLoading = true;
+
+    // Calculate future date (1 year from now)
+    const futureDate = new Date();
+    futureDate.setFullYear(futureDate.getFullYear() + 1);
+
     this.dateRange = {
       startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days ago
-      endDate: new Date().toISOString().split('T')[0] // Today
+      endDate: futureDate.toISOString().split('T')[0] // 1 year in the future
     };
+
     this.searchQuery = '';
     this.activeFilter = 'all';
     this.activeDateRange = 'month';
@@ -457,6 +466,8 @@ export class HistoryView extends LitElement {
     };
     this.showDetailModal = false;
     this.selectedTransaction = null;
+    this.isClearing = false;
+    this.showClearConfirmation = false;
 
     // Set initial date range
     this.handleDateRangeChange('month');
@@ -483,7 +494,31 @@ export class HistoryView extends LitElement {
     window.addEventListener('hashchange', () => {
       if (window.location.hash === '#history') {
         console.log('HISTORY TAB: Tab selected, refreshing data');
+        // Force a complete reload of transactions when the tab is selected
+        setTimeout(() => {
+          this.loadTransactions();
+        }, 100);
+      }
+    });
+
+    // Also check if we're already on the history tab when the component is created
+    if (window.location.hash === '#history') {
+      console.log('HISTORY TAB: Already on history tab, loading data');
+      setTimeout(() => {
         this.loadTransactions();
+      }, 100);
+    }
+
+    // Add keyboard shortcut for developers to clear sample data (Ctrl+Shift+C)
+    window.addEventListener('keydown', (event) => {
+      // Check if we're on the history tab
+      if (window.location.hash === '#history') {
+        // Check for Ctrl+Shift+C (or Cmd+Shift+C on Mac)
+        if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'C') {
+          console.log('Developer shortcut detected: Clearing sample data');
+          this.showClearSampleDataConfirmation();
+          event.preventDefault();
+        }
       }
     });
   }
@@ -502,6 +537,21 @@ export class HistoryView extends LitElement {
       });
 
       console.log('HISTORY TAB: Loaded transactions:', transactions.length);
+
+      // Log income transactions for debugging
+      const incomeTransactions = transactions.filter(t => t.isIncome);
+      console.log(`HISTORY TAB: Income transactions (${incomeTransactions.length}):`);
+      incomeTransactions.forEach(t => {
+        console.log(`  - ${t.date}: ${t.description} - ${t.amount}`);
+      });
+
+      // Count transactions by type
+      const transactionsByType = transactions.reduce((acc, t) => {
+        acc[t.type] = (acc[t.type] || 0) + 1;
+        return acc;
+      }, {});
+      console.log('HISTORY TAB: Transactions by type:', transactionsByType);
+
       this.transactions = transactions;
 
       // Apply active filter
@@ -511,6 +561,11 @@ export class HistoryView extends LitElement {
       this.summaryStats = calculateTransactionStats(this.transactions);
 
       console.log('HISTORY TAB: Grouped transactions count:', this.groupedTransactions.length);
+
+      // Log grouped transactions for debugging
+      this.groupedTransactions.forEach(group => {
+        console.log(`Group for date ${group.date}: ${group.transactions.length} transactions`);
+      });
 
       // Dispatch an event to notify that history data has been loaded
       window.dispatchEvent(new CustomEvent('history-data-loaded', {
@@ -578,41 +633,64 @@ export class HistoryView extends LitElement {
     console.log('Setting active date range to:', range);
     this.activeDateRange = range;
 
+    // Get current date
+    const today = new Date();
+
+    // Calculate future date (1 year from now)
+    const futureDate = new Date();
+    futureDate.setFullYear(futureDate.getFullYear() + 1);
+    const futureDateStr = futureDate.toISOString().split('T')[0];
+
     switch(range) {
       case 'week':
-        // Last 7 days
+        // Last 7 days + future
         const weekAgo = new Date();
         weekAgo.setDate(weekAgo.getDate() - 7);
         this.dateRange = {
           startDate: weekAgo.toISOString().split('T')[0],
-          endDate: new Date().toISOString().split('T')[0]
+          endDate: futureDateStr
         };
         break;
       case 'month':
-        // Last 30 days
+        // Last 30 days + future
         const monthAgo = new Date();
         monthAgo.setDate(monthAgo.getDate() - 30);
         this.dateRange = {
           startDate: monthAgo.toISOString().split('T')[0],
-          endDate: new Date().toISOString().split('T')[0]
+          endDate: futureDateStr
         };
         break;
       case 'quarter':
-        // Last 90 days
+        // Last 90 days + future
         const quarterAgo = new Date();
         quarterAgo.setDate(quarterAgo.getDate() - 90);
         this.dateRange = {
           startDate: quarterAgo.toISOString().split('T')[0],
-          endDate: new Date().toISOString().split('T')[0]
+          endDate: futureDateStr
         };
         break;
       case 'year':
-        // Last 365 days
+        // Last 365 days + future
         const yearAgo = new Date();
         yearAgo.setDate(yearAgo.getDate() - 365);
         this.dateRange = {
           startDate: yearAgo.toISOString().split('T')[0],
-          endDate: new Date().toISOString().split('T')[0]
+          endDate: futureDateStr
+        };
+        break;
+      case 'future':
+        // Only future transactions
+        this.dateRange = {
+          startDate: today.toISOString().split('T')[0],
+          endDate: futureDateStr
+        };
+        break;
+      case 'all':
+        // All transactions (past and future)
+        const allPastDate = new Date(2020, 0, 1); // Start from Jan 1, 2020
+        this.dateRange = {
+          startDate: allPastDate.toISOString().split('T')[0],
+          endDate: futureDateStr
         };
         break;
     }
@@ -661,6 +739,42 @@ export class HistoryView extends LitElement {
 
     // Export to CSV
     exportTransactionsToCSV(transactionsToExport, filename);
+  }
+
+  showClearSampleDataConfirmation() {
+    this.showClearConfirmation = true;
+    this.requestUpdate();
+  }
+
+  cancelClearSampleData() {
+    this.showClearConfirmation = false;
+    this.requestUpdate();
+  }
+
+  /**
+   * Clear sample data from the database
+   * This is a developer feature that can be triggered with Ctrl+Shift+C (or Cmd+Shift+C on Mac)
+   * when on the History tab
+   */
+  async clearSampleData() {
+    this.isClearing = true;
+    this.showClearConfirmation = false;
+    this.requestUpdate();
+
+    try {
+      // Clear sample payments
+      await clearSamplePayments();
+
+      // Reload transactions
+      await this.loadTransactions();
+
+      console.log('Sample data cleared successfully');
+    } catch (error) {
+      console.error('Error clearing sample data:', error);
+    } finally {
+      this.isClearing = false;
+      this.requestUpdate();
+    }
   }
 
   formatDate(dateString) {
@@ -813,15 +927,58 @@ export class HistoryView extends LitElement {
 
         <div class="header">
           <div class="title">History</div>
-          <div class="export-button" @click=${this.exportTransactions}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-              <polyline points="7 10 12 15 17 10"></polyline>
-              <line x1="12" y1="15" x2="12" y2="3"></line>
-            </svg>
-            <span>Export</span>
+          <div style="display: flex; gap: 8px;">
+            <!-- Clear Sample button hidden for regular users, but kept in code for developers -->
+            <!-- Uncomment the following div to enable the Clear Sample button when needed
+            <div class="export-button" @click=${this.showClearSampleDataConfirmation}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 6h18"></path>
+                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+              </svg>
+              <span>Clear Sample</span>
+            </div>
+            -->
+            <div class="export-button" @click=${this.exportTransactions}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              <span>Export</span>
+            </div>
           </div>
         </div>
+
+        <!-- Clear Sample Data Confirmation Dialog -->
+        ${this.showClearConfirmation ? html`
+          <div class="modal-backdrop" @click=${this.cancelClearSampleData}>
+            <div class="modal-content" @click=${(e) => e.stopPropagation()}>
+              <div class="modal-header">
+                <h3 class="modal-title">Clear Sample Data</h3>
+              </div>
+              <div class="modal-body">
+                <p>Are you sure you want to clear the sample payment data?</p>
+                <p>This will remove the following sample payments:</p>
+                <ul>
+                  <li>Payment for Monday shift ($80.00)</li>
+                  <li>Payment for last week ($150.00)</li>
+                </ul>
+              </div>
+              <div class="modal-footer">
+                <button class="modal-button cancel-button" @click=${this.cancelClearSampleData}>
+                  Cancel
+                </button>
+                <button class="modal-button" style="color: #ff3b30;" @click=${this.clearSampleData}>
+                  ${this.isClearing ? html`
+                    <span class="ios-spinner"></span>
+                    Clearing...
+                  ` : 'Clear Sample Data'}
+                </button>
+              </div>
+            </div>
+          </div>
+        ` : ''}
 
         <!-- Search Bar -->
         <div class="search-bar">
@@ -862,6 +1019,18 @@ export class HistoryView extends LitElement {
               @click=${() => this.handleDateRangeChange('year')}
             >
               Last Year
+            </div>
+            <div
+              class="date-range-option ${this.activeDateRange === 'future' ? 'active' : ''}"
+              @click=${() => this.handleDateRangeChange('future')}
+            >
+              Upcoming
+            </div>
+            <div
+              class="date-range-option ${this.activeDateRange === 'all' ? 'active' : ''}"
+              @click=${() => this.handleDateRangeChange('all')}
+            >
+              All Time
             </div>
           </div>
         </div>

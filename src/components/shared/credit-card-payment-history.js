@@ -453,12 +453,48 @@ export class CreditCardPaymentHistory extends LitElement {
   formatDate(dateString) {
     if (!dateString) return '';
 
+    console.log('PAYMENT HISTORY: Formatting date string:', dateString);
+    console.log('PAYMENT HISTORY: Date string type:', typeof dateString);
+
+    try {
+      // Parse the date components
+      const dateParts = dateString.split('-');
+      if (dateParts.length === 3) {
+        const year = parseInt(dateParts[0]);
+        const month = parseInt(dateParts[1]) - 1; // Month is 0-indexed in JS Date
+        const day = parseInt(dateParts[2]);
+
+        console.log(`PAYMENT HISTORY: Date components - Year: ${year}, Month: ${month + 1}, Day: ${day}`);
+
+        // Create a date object and add one day to match the History tab
+        const dateObj = new Date(Date.UTC(year, month, day));
+        dateObj.setUTCDate(dateObj.getUTCDate() + 1);
+
+        console.log('PAYMENT HISTORY: Adjusted date object:', dateObj);
+        console.log('PAYMENT HISTORY: Adjusted date toISOString:', dateObj.toISOString());
+
+        const formattedDate = dateObj.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        });
+
+        console.log('PAYMENT HISTORY: Formatted date:', formattedDate);
+        return formattedDate;
+      }
+    } catch (error) {
+      console.error('PAYMENT HISTORY: Error formatting date:', error);
+    }
+
+    // Fallback to original method if there's an error
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
+    const formattedDate = date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
     });
+
+    return formattedDate;
   }
 
   render() {
