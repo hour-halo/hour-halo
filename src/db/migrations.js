@@ -175,10 +175,11 @@ export const migrations = {
         await db.expenses.add(expense);
       }
 
-      // Add fixed expenses
-      for (const fixedExpense of sampleFixedExpenses) {
-        await db.fixedExpenses.add(fixedExpense);
-      }
+      // Don't add fixed expenses by default to avoid the expense card showing up
+      // when there's no actual user data
+      // for (const fixedExpense of sampleFixedExpenses) {
+      //   await db.fixedExpenses.add(fixedExpense);
+      // }
 
       // Add credit card
       const cardId = await db.creditCards.add(sampleCreditCard);

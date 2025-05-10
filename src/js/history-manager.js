@@ -14,14 +14,33 @@ import { getCreditCards, getCreditCardPayments } from './credit-card-manager.js'
  */
 export async function getTransactionHistory(options = {}) {
   try {
+    // Default options with local timezone handling
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const today = new Date();
+
+    // Format dates using local timezone
+    const startYear = thirtyDaysAgo.getFullYear();
+    const startMonth = String(thirtyDaysAgo.getMonth() + 1).padStart(2, '0');
+    const startDay = String(thirtyDaysAgo.getDate()).padStart(2, '0');
+    const startDateFormatted = `${startYear}-${startMonth}-${startDay}`;
+
+    const endYear = today.getFullYear();
+    const endMonth = String(today.getMonth() + 1).padStart(2, '0');
+    const endDay = String(today.getDate()).padStart(2, '0');
+    const endDateFormatted = `${endYear}-${endMonth}-${endDay}`;
+
+    console.log(`Using local date range: ${startDateFormatted} to ${endDateFormatted}`);
+
     // Default options
     const defaultOptions = {
-      startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days ago
-      endDate: new Date().toISOString().split('T')[0], // Today
+      startDate: startDateFormatted, // 30 days ago in local timezone
+      endDate: endDateFormatted, // Today in local timezone
       types: ['hour', 'tips', 'payment', 'expense', 'bill', 'card-payment'],
       limit: 100,
       offset: 0
     };
+
+    console.log(`Default date range: ${startDateFormatted} to ${endDateFormatted}`);
 
     // Merge options
     const mergedOptions = { ...defaultOptions, ...options };
@@ -39,86 +58,154 @@ export async function getTransactionHistory(options = {}) {
     if (mergedOptions.types.includes('hour')) {
       console.log('HISTORY MANAGER: Fetching hours from Week tab...');
 
-      // Get all weeks
-      const weeks = await db.weeks.toArray();
-      console.log('HISTORY MANAGER: Found weeks:', weeks.length);
+      try {
+        // Get all weeks
+        const weeks = await db.weeks.toArray();
+        console.log('HISTORY MANAGER: Found weeks:', weeks.length);
 
-      let hoursFromWeeks = [];
+        // Arrays to hold transactions
+        let hoursTransactions = [];
+        let tipsTransactions = [];
 
-      // Process each week to extract daily hours
-      for (const week of weeks) {
-        if (week.days) {
-          // Convert week ID to date
-          const weekStartDate = new Date(week.id);
+        // Process each week
+        for (const week of weeks) {
+          if (!week || !week.days) {
+            console.log(`Skipping week ${week?.id || 'unknown'}: No days data`);
+            continue;
+          }
 
-          // Process each day in the week
-          const dayKeys = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
-          dayKeys.forEach((dayKey, index) => {
-            if (week.days[dayKey] && week.days[dayKey].hours > 0) {
-              // Calculate the actual date for this day
-              const dayDate = new Date(weekStartDate);
-              dayDate.setDate(weekStartDate.getDate() + index);
-              const dateStr = dayDate.toISOString().split('T')[0];
+          console.log(`Processing week: ${week.id}`);
+
+          try {
+            // Parse the week ID to get the Monday date
+            const [year, month, day] = week.id.split('-').map(num => parseInt(num, 10));
+
+            // Create a date object for Monday (first day of the week)
+            // Month is 0-indexed in JavaScript Date
+            const mondayDate = new Date(year, month - 1, day);
+            console.log(`Week starts on Monday: ${mondayDate.toDateString()}`);
+
+            // Map day keys to their full names and indices
+            const dayMap = [
+              { key: 'mon', name: 'Monday', index: 0 },
+              { key: 'tue', name: 'Tuesday', index: 1 },
+              { key: 'wed', name: 'Wednesday', index: 2 },
+              { key: 'thu', name: 'Thursday', index: 3 },
+              { key: 'fri', name: 'Friday', index: 4 },
+              { key: 'sat', name: 'Saturday', index: 5 },
+              { key: 'sun', name: 'Sunday', index: 6 }
+            ];
+
+            // Process each day in the week
+            for (const { key, name, index } of dayMap) {
+              // Get the day data
+              const dayData = week.days[key];
+
+              if (!dayData) {
+                console.log(`No data for ${name}, skipping`);
+                continue;
+              }
+
+              // Get hours and tips
+              const hours = parseFloat(dayData.hours) || 0;
+              const tips = parseFloat(dayData.tips) || 0;
+
+              // Skip days with no hours
+              if (hours <= 0) {
+                console.log(`Skipping ${name}: No hours recorded`);
+                continue;
+              }
+
+              // Calculate the date for this day
+              const dayDate = new Date(mondayDate);
+              dayDate.setDate(mondayDate.getDate() + index);
+
+              // Format as YYYY-MM-DD using UTC
+              let dateStr = dayDate.toISOString().split('T')[0];
+
+              // Add one day to match the date shown in the Week tab
+              // This is necessary because we need to be consistent with how we handle dates
+              try {
+                // Parse the date
+                const dateParts = dateStr.split('-');
+                const year = parseInt(dateParts[0]);
+                const month = parseInt(dateParts[1]) - 1; // Month is 0-indexed in JS Date
+                const day = parseInt(dateParts[2]);
+
+                // Create a date object and add one day
+                const dateObj = new Date(Date.UTC(year, month, day));
+                dateObj.setUTCDate(dateObj.getUTCDate() + 1);
+
+                // Format back to YYYY-MM-DD
+                dateStr = dateObj.toISOString().split('T')[0];
+                console.log(`  Adjusted income date by adding one day: ${dateStr}`);
+              } catch (error) {
+                console.error(`  Error adjusting income date: ${error}`);
+              }
+
+              console.log(`${name} (${dateStr}): Hours=${hours}, Tips=${tips}`);
 
               // Check if this date falls within our range
               if (dateStr >= mergedOptions.startDate && dateStr <= mergedOptions.endDate) {
-                hoursFromWeeks.push({
-                  id: `week-${week.id}-${dayKey}`,
+                // Create a unique ID for this transaction
+                const transactionId = `${week.id}-${key}`;
+
+                // Add hours transaction
+                hoursTransactions.push({
+                  id: `hour-${transactionId}`,
+                  type: 'hour',
                   date: dateStr,
-                  hours: week.days[dayKey].hours,
-                  tips: week.days[dayKey].tips || 0,
-                  rate: hourlyRate,
-                  notes: `Hours worked on ${dayKey}`
+                  amount: hours * hourlyRate,
+                  description: `Worked ${hours} hours on ${name}`,
+                  category: 'Income',
+                  details: {
+                    hours: hours,
+                    rate: hourlyRate,
+                    notes: `Hours worked on ${name}`
+                  },
+                  isIncome: true,
+                  source: 'week-tab'
                 });
+
+                console.log(`✅ Added hours entry for ${dateStr}: ${hours} hours`);
+
+                // Add tips transaction if applicable
+                if (tips > 0) {
+                  tipsTransactions.push({
+                    id: `tips-${transactionId}`,
+                    type: 'tips',
+                    date: dateStr,
+                    amount: tips,
+                    description: `Tips earned on ${name}`,
+                    category: 'Tips',
+                    details: {
+                      hours: hours,
+                      tips: tips,
+                      notes: `Tips earned on ${name}`
+                    },
+                    isIncome: true,
+                    source: 'week-tab'
+                  });
+
+                  console.log(`✅ Added tips entry for ${dateStr}: $${tips}`);
+                }
+              } else {
+                console.log(`⏭️ Skipped ${dateStr}: Outside date range ${mergedOptions.startDate} to ${mergedOptions.endDate}`);
               }
             }
-          });
+          } catch (weekError) {
+            console.error(`Error processing week ${week.id}:`, weekError);
+          }
         }
+
+        console.log('HISTORY MANAGER: Hours transactions:', hoursTransactions.length);
+        console.log('HISTORY MANAGER: Tips transactions:', tipsTransactions.length);
+
+        // Add both hours and tips transactions
+        allTransactions = [...allTransactions, ...hoursTransactions, ...tipsTransactions];
+      } catch (error) {
+        console.error('HISTORY MANAGER: Error processing hours:', error);
       }
-
-      console.log('HISTORY MANAGER: Hours from weeks:', hoursFromWeeks.length, hoursFromWeeks);
-
-      // Transform hours to transaction format
-      const hoursTransactions = hoursFromWeeks.map(hour => ({
-        id: `hour-${hour.id}`,
-        type: 'hour',
-        date: hour.date,
-        amount: hour.hours * (hour.rate || hourlyRate),
-        description: `Worked ${hour.hours} hours`,
-        category: 'Income',
-        details: {
-          hours: hour.hours,
-          rate: hour.rate || hourlyRate,
-          notes: hour.notes
-        },
-        isIncome: true,
-        source: 'week-tab'
-      }));
-
-      // Create separate transactions for tips
-      const tipsTransactions = hoursFromWeeks
-        .filter(hour => hour.tips && hour.tips > 0) // Only include days with tips
-        .map(hour => ({
-          id: `tips-${hour.id}`,
-          type: 'tips',
-          date: hour.date,
-          amount: hour.tips,
-          description: `Tips earned`,
-          category: 'Tips',
-          details: {
-            hours: hour.hours,
-            tips: hour.tips,
-            notes: `Tips earned on ${hour.date}`
-          },
-          isIncome: true,
-          source: 'week-tab'
-        }));
-
-      console.log('HISTORY MANAGER: Hours transactions:', hoursTransactions.length);
-      console.log('HISTORY MANAGER: Tips transactions:', tipsTransactions.length);
-
-      // Add both hours and tips transactions
-      allTransactions = [...allTransactions, ...hoursTransactions, ...tipsTransactions];
     }
 
     // EXPENSES: Get data from Spend tab
@@ -138,23 +225,72 @@ export async function getTransactionHistory(options = {}) {
       console.log('HISTORY MANAGER: Filtered expenses:', filteredExpenses.length);
 
       // Transform expenses to transaction format
-      const expenseTransactions = filteredExpenses.map(expense => ({
-        id: `expense-${expense.id}`,
-        type: 'expense',
-        date: expense.date,
-        amount: parseFloat(expense.amount) || 0,
-        description: expense.name || 'Expense',
-        category: expense.category || 'Uncategorized',
-        details: {
-          paymentMethod: expense.paymentMethod || 'cash',
-          notes: expense.notes,
-          weekId: expense.weekId,
-          monthId: expense.monthId,
-          isRecurring: expense.isRecurring || false
-        },
-        isIncome: false,
-        source: 'spend-tab'
-      }));
+      const expenseTransactions = filteredExpenses.map(expense => {
+        // Ensure the date is properly formatted as YYYY-MM-DD
+        let expenseDate = expense.date;
+
+        // Log the original date for debugging
+        console.log(`Processing expense: ${expense.name}, Original date: ${expenseDate}`);
+
+        // If the date is a Date object, convert it to YYYY-MM-DD string using UTC (same as Work Hours)
+        if (expenseDate instanceof Date) {
+          // Use UTC timezone to match how Work Hours dates are processed
+          expenseDate = expenseDate.toISOString().split('T')[0];
+          console.log(`  Converted date object to UTC string: ${expenseDate}`);
+        }
+
+        // If the date includes a time component, strip it out
+        if (expenseDate && expenseDate.includes('T')) {
+          expenseDate = expenseDate.split('T')[0];
+          console.log(`  Stripped time component: ${expenseDate}`);
+        }
+
+        // Ensure the date is valid
+        if (!expenseDate || !expenseDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          console.warn(`  Invalid date format for expense ${expense.id}: ${expenseDate}`);
+          // Default to today if date is invalid using UTC (same as Work Hours)
+          expenseDate = new Date().toISOString().split('T')[0];
+          console.log(`  Using default UTC date: ${expenseDate}`);
+        }
+
+        // Add one day to match the date shown in the Spend tab
+        // This is necessary because the Spend tab uses local timezone but History uses UTC
+        try {
+          // Parse the date
+          const dateParts = expenseDate.split('-');
+          const year = parseInt(dateParts[0]);
+          const month = parseInt(dateParts[1]) - 1; // Month is 0-indexed in JS Date
+          const day = parseInt(dateParts[2]);
+
+          // Create a date object and add one day
+          const dateObj = new Date(Date.UTC(year, month, day));
+          dateObj.setUTCDate(dateObj.getUTCDate() + 1);
+
+          // Format back to YYYY-MM-DD
+          expenseDate = dateObj.toISOString().split('T')[0];
+          console.log(`  Adjusted date by adding one day: ${expenseDate}`);
+        } catch (error) {
+          console.error(`  Error adjusting date: ${error}`);
+        }
+
+        return {
+          id: `expense-${expense.id}`,
+          type: 'expense',
+          date: expenseDate,
+          amount: parseFloat(expense.amount) || 0,
+          description: expense.name || 'Expense',
+          category: expense.category || 'Uncategorized',
+          details: {
+            paymentMethod: expense.paymentMethod || 'cash',
+            notes: expense.notes,
+            weekId: expense.weekId,
+            monthId: expense.monthId,
+            isRecurring: expense.isRecurring || false
+          },
+          isIncome: false,
+          source: 'spend-tab'
+        };
+      });
 
       console.log('HISTORY MANAGER: Expense transactions:', expenseTransactions.length);
       allTransactions = [...allTransactions, ...expenseTransactions];
@@ -178,25 +314,160 @@ export async function getTransactionHistory(options = {}) {
       console.log('HISTORY MANAGER: Filtered fixed expenses:', filteredFixedExpenses.length);
 
       // Transform fixed expenses to transaction format
-      const fixedExpenseTransactions = filteredFixedExpenses.map(expense => ({
-        id: `bill-${expense.id}`,
-        type: 'bill',
-        date: expense.dueDate,
-        amount: parseFloat(expense.amount) || 0,
-        description: expense.name || 'Monthly Bill',
-        category: expense.category || 'Bills',
-        details: {
-          paymentMethod: expense.paymentMethod || 'cash',
-          isPaid: expense.isPaid || false,
-          recurrenceFrequency: expense.recurrenceFrequency || 'Monthly',
-          isActive: expense.isActive !== false
-        },
-        isIncome: false,
-        source: 'spend-tab'
-      }));
+      const fixedExpenseTransactions = filteredFixedExpenses.map(expense => {
+        // Ensure the date is properly formatted as YYYY-MM-DD
+        let expenseDate = expense.dueDate;
+
+        // Log the original date for debugging
+        console.log(`Processing fixed expense: ${expense.name}, Original date: ${expenseDate}`);
+
+        // If the date is a Date object, convert it to YYYY-MM-DD string using UTC (same as Work Hours)
+        if (expenseDate instanceof Date) {
+          // Use UTC timezone to match how Work Hours dates are processed
+          expenseDate = expenseDate.toISOString().split('T')[0];
+          console.log(`  Converted date object to UTC string: ${expenseDate}`);
+        }
+
+        // If the date includes a time component, strip it out
+        if (expenseDate && expenseDate.includes('T')) {
+          expenseDate = expenseDate.split('T')[0];
+          console.log(`  Stripped time component: ${expenseDate}`);
+        }
+
+        // Ensure the date is valid
+        if (!expenseDate || !expenseDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          console.warn(`  Invalid date format for fixed expense ${expense.id}: ${expenseDate}`);
+          // Default to today if date is invalid using UTC (same as Work Hours)
+          expenseDate = new Date().toISOString().split('T')[0];
+          console.log(`  Using default UTC date: ${expenseDate}`);
+        }
+
+        // Add one day to match the date shown in the Spend tab
+        // This is necessary because the Spend tab uses local timezone but History uses UTC
+        try {
+          // Parse the date
+          const dateParts = expenseDate.split('-');
+          const year = parseInt(dateParts[0]);
+          const month = parseInt(dateParts[1]) - 1; // Month is 0-indexed in JS Date
+          const day = parseInt(dateParts[2]);
+
+          // Create a date object and add one day
+          const dateObj = new Date(Date.UTC(year, month, day));
+          dateObj.setUTCDate(dateObj.getUTCDate() + 1);
+
+          // Format back to YYYY-MM-DD
+          expenseDate = dateObj.toISOString().split('T')[0];
+          console.log(`  Adjusted date by adding one day: ${expenseDate}`);
+        } catch (error) {
+          console.error(`  Error adjusting date: ${error}`);
+        }
+
+        return {
+          id: `bill-${expense.id}`,
+          type: 'bill',
+          date: expenseDate,
+          amount: parseFloat(expense.amount) || 0,
+          description: expense.name || 'Monthly Bill',
+          category: expense.category || 'Bills',
+          details: {
+            paymentMethod: expense.paymentMethod || 'cash',
+            isPaid: expense.isPaid || false,
+            recurrenceFrequency: expense.recurrenceFrequency || 'Monthly',
+            isActive: expense.isActive !== false
+          },
+          isIncome: false,
+          source: 'spend-tab'
+        };
+      });
 
       console.log('HISTORY MANAGER: Bill transactions:', fixedExpenseTransactions.length);
       allTransactions = [...allTransactions, ...fixedExpenseTransactions];
+    }
+
+    // PAYMENTS: Get from payments table
+    if (mergedOptions.types.includes('payment')) {
+      console.log('HISTORY MANAGER: Fetching payments...');
+
+      try {
+        // Get all payments
+        const payments = await db.payments.toArray();
+        console.log('HISTORY MANAGER: Found payments:', payments.length);
+
+        // Filter payments by date
+        const filteredPayments = payments.filter(payment =>
+          payment.date >= mergedOptions.startDate &&
+          payment.date <= mergedOptions.endDate
+        );
+
+        console.log('HISTORY MANAGER: Filtered payments:', filteredPayments.length);
+
+        // Transform payments to transaction format
+        const paymentTransactions = filteredPayments.map(payment => {
+          // Ensure the date is properly formatted as YYYY-MM-DD
+          let paymentDate = payment.date;
+
+          // Log the original date for debugging
+          console.log(`Processing payment: ${payment.description}, Original date: ${paymentDate}`);
+
+          // If the date is a Date object, convert it to YYYY-MM-DD string using UTC
+          if (paymentDate instanceof Date) {
+            paymentDate = paymentDate.toISOString().split('T')[0];
+            console.log(`  Converted date object to UTC string: ${paymentDate}`);
+          }
+
+          // If the date includes a time component, strip it out
+          if (paymentDate && paymentDate.includes('T')) {
+            paymentDate = paymentDate.split('T')[0];
+            console.log(`  Stripped time component: ${paymentDate}`);
+          }
+
+          // Ensure the date is valid
+          if (!paymentDate || !paymentDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            console.warn(`  Invalid date format for payment ${payment.id}: ${paymentDate}`);
+            paymentDate = new Date().toISOString().split('T')[0];
+            console.log(`  Using default UTC date: ${paymentDate}`);
+          }
+
+          // Add one day to match the date shown in other tabs
+          try {
+            // Parse the date
+            const dateParts = paymentDate.split('-');
+            const year = parseInt(dateParts[0]);
+            const month = parseInt(dateParts[1]) - 1; // Month is 0-indexed in JS Date
+            const day = parseInt(dateParts[2]);
+
+            // Create a date object and add one day
+            const dateObj = new Date(Date.UTC(year, month, day));
+            dateObj.setUTCDate(dateObj.getUTCDate() + 1);
+
+            // Format back to YYYY-MM-DD
+            paymentDate = dateObj.toISOString().split('T')[0];
+            console.log(`  Adjusted date by adding one day: ${paymentDate}`);
+          } catch (error) {
+            console.error(`  Error adjusting date: ${error}`);
+          }
+
+          return {
+            id: `payment-${payment.id}`,
+            type: 'payment',
+            date: paymentDate,
+            amount: parseFloat(payment.amount) || 0,
+            description: payment.description || 'Payment',
+            category: 'Income',
+            details: {
+              method: payment.method || 'cash',
+              notes: payment.notes
+            },
+            isIncome: true,
+            source: 'payment'
+          };
+        });
+
+        console.log('HISTORY MANAGER: Payment transactions:', paymentTransactions.length);
+        allTransactions = [...allTransactions, ...paymentTransactions];
+      } catch (error) {
+        console.error('HISTORY MANAGER: Error processing payments:', error);
+      }
     }
 
     // CREDIT CARD PAYMENTS: Get from Spend tab
@@ -224,24 +495,86 @@ export async function getTransactionHistory(options = {}) {
           console.log(`HISTORY MANAGER: Filtered payments for card ${card.name}:`, filteredPayments.length);
 
           // Transform card payments to transaction format
-          const cardPayments = filteredPayments.map(payment => ({
-            id: `card-payment-${payment.id}`,
-            type: 'card-payment',
-            date: payment.date,
-            amount: parseFloat(payment.amount) || 0,
-            description: `${payment.type || 'Credit Card'} Payment - ${card.name}`,
-            category: 'Credit Card Payment',
-            details: {
-              cardId: card.id,
-              cardName: card.name,
-              lastFourDigits: card.lastFourDigits,
-              paymentType: payment.type,
-              notes: payment.notes,
-              color: card.color
-            },
-            isIncome: false,
-            source: 'spend-tab'
-          }));
+          const cardPayments = filteredPayments.map(payment => {
+            // Ensure the date is properly formatted as YYYY-MM-DD
+            let paymentDate = payment.date;
+
+            // Log the original date for debugging
+            console.log(`Processing card payment for ${card.name}, Original date: ${paymentDate}`);
+
+            // If the date is a Date object, convert it to YYYY-MM-DD string using UTC (same as Work Hours)
+            if (paymentDate instanceof Date) {
+              // Use UTC timezone to match how Work Hours dates are processed
+              paymentDate = paymentDate.toISOString().split('T')[0];
+              console.log(`  Converted date object to UTC string: ${paymentDate}`);
+            }
+
+            // If the date includes a time component, strip it out
+            if (paymentDate && paymentDate.includes('T')) {
+              paymentDate = paymentDate.split('T')[0];
+              console.log(`  Stripped time component: ${paymentDate}`);
+            }
+
+            // Ensure the date is valid
+            if (!paymentDate || !paymentDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+              console.warn(`  Invalid date format for card payment ${payment.id}: ${paymentDate}`);
+              // Default to today if date is invalid using UTC (same as Work Hours)
+              paymentDate = new Date().toISOString().split('T')[0];
+              console.log(`  Using default UTC date: ${paymentDate}`);
+            }
+
+            // For card payments, we need to ensure the date is interpreted correctly
+            try {
+              // The date string is already in YYYY-MM-DD format
+              console.log(`  Original payment date: ${paymentDate}`);
+
+              // Validate the date format
+              if (!paymentDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                console.warn(`  Invalid date format: ${paymentDate}, using default`);
+                const today = new Date();
+                const year = today.getFullYear();
+                const month = String(today.getMonth() + 1).padStart(2, '0');
+                const day = String(today.getDate()).padStart(2, '0');
+                paymentDate = `${year}-${month}-${day}`;
+              }
+
+              // Add one day to match the date shown in other tabs
+              // This is the key fix - we're adding one day to the date to match the behavior in other parts of the app
+              const dateParts = paymentDate.split('-');
+              const year = parseInt(dateParts[0]);
+              const month = parseInt(dateParts[1]) - 1; // Month is 0-indexed in JS Date
+              const day = parseInt(dateParts[2]);
+
+              // Create a date object and add one day
+              const dateObj = new Date(Date.UTC(year, month, day));
+              dateObj.setUTCDate(dateObj.getUTCDate() + 1);
+
+              // Format back to YYYY-MM-DD
+              paymentDate = dateObj.toISOString().split('T')[0];
+              console.log(`  Adjusted date by adding one day: ${paymentDate}`);
+            } catch (error) {
+              console.error(`  Error processing card payment date: ${error}`);
+            }
+
+            return {
+              id: `card-payment-${payment.id}`,
+              type: 'card-payment',
+              date: paymentDate,
+              amount: parseFloat(payment.amount) || 0,
+              description: `${payment.type || 'Credit Card'} Payment - ${card.name}`,
+              category: 'Credit Card Payment',
+              details: {
+                cardId: card.id,
+                cardName: card.name,
+                lastFourDigits: card.lastFourDigits,
+                paymentType: payment.type,
+                notes: payment.notes,
+                color: card.color
+              },
+              isIncome: false,
+              source: 'spend-tab'
+            };
+          });
 
           cardPaymentTransactions = [...cardPaymentTransactions, ...cardPayments];
         }
@@ -265,6 +598,21 @@ export async function getTransactionHistory(options = {}) {
     }
 
     console.log('HISTORY MANAGER: Final transactions count:', allTransactions.length);
+
+    // Log transaction summary by type
+    const transactionSummary = allTransactions.reduce((acc, transaction) => {
+      acc[transaction.type] = (acc[transaction.type] || 0) + 1;
+      return acc;
+    }, {});
+    console.log('HISTORY MANAGER: Transaction summary by type:', transactionSummary);
+
+    // Log income transactions for debugging
+    const incomeTransactions = allTransactions.filter(t => t.isIncome);
+    console.log(`HISTORY MANAGER: Income transactions (${incomeTransactions.length}):`);
+    incomeTransactions.forEach(t => {
+      console.log(`  - ${t.date}: ${t.description} - ${t.amount}`);
+    });
+
     return allTransactions;
   } catch (error) {
     console.error('HISTORY MANAGER: Error fetching transaction history:', error);

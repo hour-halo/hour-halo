@@ -258,6 +258,11 @@ function renderView(route) {
       viewContainer.appendChild(settingsView);
       break;
 
+    case 'diagnostic':
+      const diagnosticView = document.createElement('diagnostic-view');
+      viewContainer.appendChild(diagnosticView);
+      break;
+
     default:
       // Placeholder for views that are not yet implemented
       const placeholderTemplate = html`

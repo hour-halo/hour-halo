@@ -270,9 +270,16 @@ export class CreditCardPaymentModal extends LitElement {
     super();
     this.open = false;
     this.card = null;
+    // Use local timezone for date
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const localDate = `${year}-${month}-${day}`;
+
     this.payment = {
       amount: '',
-      date: new Date().toISOString().split('T')[0],
+      date: localDate,
       type: 'Custom',
       notes: ''
     };
@@ -291,9 +298,16 @@ export class CreditCardPaymentModal extends LitElement {
   show(card, settings = { currency: 'USD' }) {
     this.card = card;
     this.settings = settings;
+    // Use local timezone for date
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const localDate = `${year}-${month}-${day}`;
+
     this.payment = {
       amount: card.minimumPayment || '',
-      date: new Date().toISOString().split('T')[0],
+      date: localDate,
       type: 'Minimum',
       notes: ''
     };
@@ -355,10 +369,25 @@ export class CreditCardPaymentModal extends LitElement {
   }
 
   handleInputChange(e, field) {
-    this.payment = {
-      ...this.payment,
-      [field]: e.target.value
-    };
+    // Special handling for date field to ensure consistent date format
+    if (field === 'date') {
+      console.log('CARD PAYMENT MODAL: Date input changed to:', e.target.value);
+
+      // For date inputs, the value is already in YYYY-MM-DD format
+      // We'll store it directly without any timezone conversion
+      this.payment = {
+        ...this.payment,
+        [field]: e.target.value
+      };
+
+      console.log('CARD PAYMENT MODAL: Updated payment date:', this.payment.date);
+    } else {
+      // For other fields, just update the value normally
+      this.payment = {
+        ...this.payment,
+        [field]: e.target.value
+      };
+    }
   }
 
   selectPaymentType(type) {
@@ -387,12 +416,24 @@ export class CreditCardPaymentModal extends LitElement {
     this.isSaving = true;
 
     try {
+      // Debug logging for date
+      console.log('CARD PAYMENT MODAL: Payment date before saving:', this.payment.date);
+      console.log('CARD PAYMENT MODAL: Payment date type:', typeof this.payment.date);
+
+      // Create a Date object from the date string to see how it's interpreted
+      const dateObj = new Date(this.payment.date);
+      console.log('CARD PAYMENT MODAL: Date object created from payment date:', dateObj);
+      console.log('CARD PAYMENT MODAL: Date object toISOString:', dateObj.toISOString());
+      console.log('CARD PAYMENT MODAL: Date object toLocaleDateString:', dateObj.toLocaleDateString());
+
       // Create payment object
       const paymentToSave = {
         ...this.payment,
         cardId: this.card.id,
         amount: parseFloat(this.payment.amount)
       };
+
+      console.log('CARD PAYMENT MODAL: Payment object to save:', paymentToSave);
 
       // Record payment
       await recordCreditCardPayment(paymentToSave);

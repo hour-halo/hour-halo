@@ -179,11 +179,20 @@ export class ExpenseForm extends LitElement {
     super();
     this.isOpen = false;
     this.isEditing = false;
+
+    // Get today's date in YYYY-MM-DD format using local timezone
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const todayFormatted = `${year}-${month}-${day}`;
+    console.log(`Expense form initialized with local date: ${todayFormatted}`);
+
     this.expense = {
       name: '',
       amount: '',
       category: '',
-      date: new Date().toISOString().split('T')[0],
+      date: todayFormatted,
       notes: '',
       paymentMethod: 'cash',
       isRecurring: false
@@ -200,14 +209,64 @@ export class ExpenseForm extends LitElement {
     this.monthId = monthId;
 
     if (expense) {
-      this.expense = { ...expense };
+      // When editing an existing expense, ensure the date is properly formatted
+      let formattedExpense = { ...expense };
+
+      // Format the date if it exists
+      if (formattedExpense.date) {
+        // If it's a Date object, convert to string using local timezone
+        if (formattedExpense.date instanceof Date) {
+          const year = formattedExpense.date.getFullYear();
+          const month = String(formattedExpense.date.getMonth() + 1).padStart(2, '0');
+          const day = String(formattedExpense.date.getDate()).padStart(2, '0');
+          formattedExpense.date = `${year}-${month}-${day}`;
+          console.log(`Editing: Converted date object to local string: ${formattedExpense.date}`);
+        }
+
+        // If it has a time component, strip it
+        if (formattedExpense.date.includes('T')) {
+          formattedExpense.date = formattedExpense.date.split('T')[0];
+          console.log(`Editing: Stripped time component: ${formattedExpense.date}`);
+        }
+
+        // Validate the date format
+        if (!formattedExpense.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          console.warn(`Invalid date format when editing: ${formattedExpense.date}, using today's date`);
+          // Use local timezone for today's date
+          const today = new Date();
+          const year = today.getFullYear();
+          const month = String(today.getMonth() + 1).padStart(2, '0');
+          const day = String(today.getDate()).padStart(2, '0');
+          formattedExpense.date = `${year}-${month}-${day}`;
+          console.log(`Editing: Using default local date: ${formattedExpense.date}`);
+        }
+      } else {
+        // If no date, use today with local timezone
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        formattedExpense.date = `${year}-${month}-${day}`;
+        console.log(`Editing: No date provided, using today: ${formattedExpense.date}`);
+      }
+
+      console.log(`Editing expense with date: ${formattedExpense.date}`);
+      this.expense = formattedExpense;
       this.isEditing = true;
     } else {
+      // Get today's date in YYYY-MM-DD format using local timezone
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      const todayFormatted = `${year}-${month}-${day}`;
+      console.log(`New expense with local date: ${todayFormatted}`);
+
       this.expense = {
         name: '',
         amount: '',
         category: '',
-        date: new Date().toISOString().split('T')[0],
+        date: todayFormatted,
         notes: '',
         paymentMethod: 'cash',
         isRecurring: false
@@ -223,10 +282,35 @@ export class ExpenseForm extends LitElement {
   }
 
   handleInputChange(e, field) {
-    this.expense = {
-      ...this.expense,
-      [field]: e.target.value
-    };
+    // Special handling for date field
+    if (field === 'date') {
+      // Ensure date is in YYYY-MM-DD format
+      let dateValue = e.target.value;
+
+      // Validate the date format
+      if (dateValue && dateValue.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        console.log(`Date input changed to: ${dateValue}`);
+
+        // Store the date as is - it's already in YYYY-MM-DD format
+        // This preserves the exact date the user selected without timezone conversion
+        this.expense = {
+          ...this.expense,
+          [field]: dateValue
+        };
+
+        console.log(`Stored expense date as: ${this.expense.date}`);
+      } else {
+        console.warn(`Invalid date format entered: ${dateValue}`);
+        // If invalid, don't update
+        return;
+      }
+    } else {
+      // Normal handling for other fields
+      this.expense = {
+        ...this.expense,
+        [field]: e.target.value
+      };
+    }
   }
 
   selectCategory(category) {
@@ -257,9 +341,43 @@ export class ExpenseForm extends LitElement {
       return;
     }
 
+    // Ensure date is in YYYY-MM-DD format with proper timezone handling
+    let formattedDate = this.expense.date;
+
+    // If it's a Date object, convert to string using local timezone
+    if (formattedDate instanceof Date) {
+      // Use local timezone instead of UTC
+      const year = formattedDate.getFullYear();
+      const month = String(formattedDate.getMonth() + 1).padStart(2, '0');
+      const day = String(formattedDate.getDate()).padStart(2, '0');
+      formattedDate = `${year}-${month}-${day}`;
+      console.log(`Converted date object to local string: ${formattedDate}`);
+    }
+
+    // If it has a time component, strip it
+    if (formattedDate && formattedDate.includes('T')) {
+      formattedDate = formattedDate.split('T')[0];
+      console.log(`Stripped time component: ${formattedDate}`);
+    }
+
+    // Validate the date format
+    if (!formattedDate || !formattedDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      console.warn(`Invalid date format: ${formattedDate}, using today's date`);
+      // Use local timezone for today's date
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      formattedDate = `${year}-${month}-${day}`;
+      console.log(`Using default local date: ${formattedDate}`);
+    }
+
+    console.log(`Expense form - Original date: ${this.expense.date}, Formatted date: ${formattedDate}`);
+
     // Create expense object
     const expenseData = {
       ...this.expense,
+      date: formattedDate, // Use the properly formatted date
       amount: parseFloat(this.expense.amount),
       weekId: this.weekId,
       monthId: this.monthId,

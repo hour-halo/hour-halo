@@ -7,12 +7,13 @@ import { LitElement, html, css } from 'lit';
 import { formatCurrency, getWeekRangeString, getMonthRangeString } from '../js/helpers.js';
 import db from '../db/db.js';
 
-// Import chart component
+// Import chart components
 import './shared/summary-charts.js';
+import './shared/expense-pie-chart.js';
 
 export class SummaryView extends LitElement {
   static properties = {
-    period: { type: String }, // 'week', 'month', 'lastMonth'
+    period: { type: String }, // 'week', 'month', 'year'
     summaryData: { type: Object },
     isLoading: { type: Boolean },
     settings: { type: Object },
@@ -73,6 +74,28 @@ export class SummaryView extends LitElement {
       padding: 16px;
       margin-bottom: 16px;
       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Style for future projection cards */
+    .future-projection {
+      border: 2px solid rgba(0, 122, 255, 0.3);
+    }
+
+    .future-projection::before {
+      content: "Projection";
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background-color: rgba(0, 122, 255, 0.1);
+      color: #007aff;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
 
     .card-title {
@@ -122,6 +145,12 @@ export class SummaryView extends LitElement {
       color: #000000;
     }
 
+    .percentage {
+      font-size: 13px;
+      color: #8e8e93;
+      margin-left: 4px;
+    }
+
     .chart-container {
       height: 200px;
       margin-top: 16px;
@@ -158,6 +187,17 @@ export class SummaryView extends LitElement {
       font-size: 15px;
       font-weight: 600;
       color: #000000;
+    }
+
+    /* Style for future dates */
+    .future-date {
+      color: #007aff;
+      font-weight: 700;
+    }
+
+    /* Style for past dates */
+    .past-date {
+      color: #8e8e93;
     }
 
     .nav-arrow {
@@ -220,9 +260,9 @@ export class SummaryView extends LitElement {
         data = await this.loadWeekData(this.currentDate);
       } else if (this.period === 'month') {
         data = await this.loadMonthData(this.currentDate);
-      } else if (this.period === 'lastMonth') {
-        // For last month, we use a dedicated function to ensure we only get last month's data
-        data = await this.loadLastMonthData();
+      } else if (this.period === 'year') {
+        // For year view, we'll aggregate data for the entire year
+        data = await this.loadYearData(this.currentDate);
       }
 
       this.summaryData = data;
@@ -397,9 +437,24 @@ export class SummaryView extends LitElement {
     const week = await db.weeks.get(weekId);
     console.log("Week data retrieved:", week);
 
+    // Get the current date for comparison
+    const now = new Date();
+    const isPastWeek = monday < now;
+    const isFutureWeek = monday > now;
+
+    // Format date range for display
+    const weekRangeString = getWeekRangeString(weekId);
+
     if (!week) {
       console.log("No week data found, returning empty data");
-      return this.createEmptySummaryData();
+      // Create empty data with appropriate date range
+      return {
+        ...this.createEmptySummaryData(),
+        period: 'week',
+        dateRange: isPastWeek ? `Past: ${weekRangeString}` :
+                  isFutureWeek ? `Future: ${weekRangeString}` :
+                  weekRangeString
+      };
     }
 
     // Calculate daily averages
@@ -428,13 +483,19 @@ export class SummaryView extends LitElement {
 
     console.log("Daily data for charts:", dailyData);
 
-    // Calculate week range string
-    const dateRange = getWeekRangeString(weekId);
-    console.log(`Date range: ${dateRange}`);
+    // Format date range for display with past/future indicators
+    const formattedDateRange = isPastWeek ? `Past: ${weekRangeString}` :
+                              isFutureWeek ? `Future: ${weekRangeString}` :
+                              weekRangeString;
+    console.log(`Date range: ${formattedDateRange}`);
 
-    return {
+    // Expense data loading is temporarily disabled
+    console.log("Expense data loading is temporarily disabled");
+
+    // Create the base summary data without expense data
+    const summaryData = {
       period: 'week',
-      dateRange,
+      dateRange: formattedDateRange,
       totalHours: week.totalHours || 0,
       totalEarnings: (week.totalHours || 0) * this.settings.hourlyRate + (this.settings.showTips ? (week.totalTips || 0) : 0),
       totalTips: week.totalTips || 0,
@@ -444,6 +505,8 @@ export class SummaryView extends LitElement {
       avgEarningsPerDay,
       dailyData
     };
+
+    return summaryData;
   }
 
   async loadMonthData(date = new Date()) {
@@ -460,9 +523,27 @@ export class SummaryView extends LitElement {
     const weeks = await this.getWeeksInMonth(year, month);
     console.log(`Found ${weeks.length} weeks in month ${year}-${month+1}`);
 
+    // Get the current date for comparison
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    // Determine if this is a past or future month
+    const isPastMonth = (year < currentYear) || (year === currentYear && month < currentMonth);
+    const isFutureMonth = (year > currentYear) || (year === currentYear && month > currentMonth);
+
+    // Get the appropriate date range string
+    const dateRange = getMonthRangeString(new Date(year, month, 1), true);
+    const formattedDateRange = isPastMonth ? `Past: ${dateRange}` :
+                              isFutureMonth ? `Future: ${dateRange}` :
+                              dateRange;
+
     if (weeks.length === 0) {
       console.log("No weeks found in month, returning empty data");
-      return this.createEmptySummaryData(this.period === 'lastMonth' ? 'lastMonth' : 'month');
+      return {
+        ...this.createEmptySummaryData(this.period === 'lastMonth' ? 'lastMonth' : 'month'),
+        dateRange: formattedDateRange
+      };
     }
 
     // Aggregate data from all weeks
@@ -531,17 +612,21 @@ export class SummaryView extends LitElement {
 
     console.log("Sorted daily data for charts:", dailyDataArray);
 
-    // Get the appropriate date range string
-    const dateRange = getMonthRangeString(new Date(year, month, 1), true);
-    console.log(`Date range: ${dateRange}`);
-
     // Determine if this is for the current month or last month
     const isLastMonth = this.period === 'lastMonth';
     console.log(`Is last month view: ${isLastMonth}`);
 
-    return {
+    // Adjust the formatted date range for last month view
+    const finalDateRange = isLastMonth ? `Last Month (${dateRange})` : formattedDateRange;
+    console.log(`Final date range: ${finalDateRange}`);
+
+    // Expense data loading is temporarily disabled
+    console.log("Expense data loading is temporarily disabled");
+
+    // Create the base summary data without expense data
+    const summaryData = {
       period: isLastMonth ? 'lastMonth' : 'month',
-      dateRange: isLastMonth ? `Last Month (${dateRange})` : dateRange,
+      dateRange: finalDateRange,
       totalHours,
       totalEarnings,
       totalTips,
@@ -551,6 +636,8 @@ export class SummaryView extends LitElement {
       avgEarningsPerDay,
       dailyData: dailyDataArray
     };
+
+    return summaryData;
   }
 
   // Helper method to get the actual date for a day in a week
@@ -585,7 +672,138 @@ export class SummaryView extends LitElement {
     }
   }
 
-  // We now use loadMonthData with a different date parameter instead of a separate method
+  // Year data loading function
+  async loadYearData(date = new Date()) {
+    // Clone the date to avoid modifying the original
+    const workingDate = new Date(date);
+
+    // Get year from the provided date
+    const year = workingDate.getFullYear();
+
+    console.log(`Loading year data for: ${year}`);
+
+    // Get all weeks from the database
+    const allWeeks = await db.weeks.toArray();
+    console.log(`Total weeks in database: ${allWeeks.length}`);
+
+    // Get the current date for comparison
+    const now = new Date();
+    const currentYear = now.getFullYear();
+
+    // Determine if this is a past or future year
+    const isPastYear = year < currentYear;
+    const isFutureYear = year > currentYear;
+
+    // Create arrays to store monthly data for charts
+    const monthlyHours = Array(12).fill(0);
+    const monthlyEarnings = Array(12).fill(0);
+    const monthlyTips = Array(12).fill(0);
+    const monthsWithData = new Set();
+
+    // Aggregate data
+    let totalHours = 0;
+    let totalTips = 0;
+    let daysWorked = 0;
+
+    // Process each week
+    for (const week of allWeeks) {
+      try {
+        // Get the week's start date (Monday)
+        const monday = new Date(week.id);
+
+        // Process daily data if available
+        if (week.days) {
+          for (const [dayKey, dayData] of Object.entries(week.days)) {
+            try {
+              // Get the actual date for this day
+              const dayDate = this.getDayDateFromWeekAndDayKey(week.id, dayKey);
+
+              if (!dayDate) {
+                console.log(`Skipping day ${dayKey} - could not determine date`);
+                continue;
+              }
+
+              // Check if this day falls within the target year
+              if (dayDate.getFullYear() === year) {
+                const month = dayDate.getMonth();
+                const hours = dayData.hours || 0;
+                const tips = dayData.tips || 0;
+
+                if (hours > 0) {
+                  totalHours += hours;
+                  totalTips += tips;
+                  daysWorked++;
+
+                  // Add to monthly data for charts
+                  monthlyHours[month] += hours;
+                  monthlyTips[month] += tips;
+                  monthlyEarnings[month] += hours * this.settings.hourlyRate + (this.settings.showTips ? tips : 0);
+                  monthsWithData.add(month);
+                }
+              }
+            } catch (error) {
+              console.error(`Error processing day ${dayKey} in week ${week.id}:`, error);
+            }
+          }
+        }
+      } catch (error) {
+        console.error(`Error processing week ${week.id}:`, error);
+      }
+    }
+
+    console.log(`Year totals - Hours: ${totalHours}, Tips: ${totalTips}, Days worked: ${daysWorked}`);
+
+    // Calculate averages
+    const avgHoursPerDay = daysWorked > 0 ? totalHours / daysWorked : 0;
+    const basePay = totalHours * this.settings.hourlyRate;
+    const totalEarnings = basePay + (this.settings.showTips ? totalTips : 0);
+    const avgEarningsPerDay = daysWorked > 0 ? totalEarnings / daysWorked : 0;
+
+    // Convert monthly data to array format for charts
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const dailyDataArray = monthNames.map((month, index) => {
+      return {
+        day: month, // Using 'day' to be compatible with existing chart component
+        hours: monthlyHours[index],
+        earnings: monthlyEarnings[index]
+      };
+    });
+
+    // Format date range for display with past/future indicators
+    const formattedDateRange = isPastYear ? `Past: ${year}` :
+                              isFutureYear ? `Future: ${year}` :
+                              `${year}`;
+
+    // If no data for this year, return empty data
+    if (monthsWithData.size === 0) {
+      console.log(`No data found for year ${year}, returning empty data`);
+      return {
+        ...this.createEmptySummaryData('year'),
+        dateRange: formattedDateRange
+      };
+    }
+
+    console.log("Monthly data for charts:", dailyDataArray);
+
+    // Expense data loading is temporarily disabled
+    console.log("Expense data loading is temporarily disabled");
+
+    // Create the base summary data without expense data
+    const summaryData = {
+      period: 'year',
+      dateRange: formattedDateRange,
+      totalHours,
+      totalEarnings,
+      totalTips,
+      basePay,
+      daysWorked,
+      avgHoursPerDay,
+      avgEarningsPerDay,
+      dailyData: dailyDataArray
+    };
+
+    return summaryData;
+  }
 
   // Helper method to get all weeks in a month
   async getWeeksInMonth(year, month) {
@@ -626,9 +844,20 @@ export class SummaryView extends LitElement {
   }
 
   createEmptySummaryData(period = 'week') {
+    const currentYear = new Date().getFullYear();
+
+    // Default expense categories
+    const expenseCategories = [
+      { category: 'Monthly Bills', amount: 0 },
+      { category: 'Everyday Spending', amount: 0 },
+      { category: 'Credit Cards', amount: 0 }
+    ];
+
     return {
       period,
-      dateRange: period === 'week' ? 'This Week' : period === 'month' ? 'This Month' : 'Last Month',
+      dateRange: period === 'week' ? 'This Week' :
+                period === 'month' ? 'This Month' :
+                period === 'year' ? `${currentYear}` : 'No Data',
       totalHours: 0,
       totalEarnings: 0,
       totalTips: 0,
@@ -636,7 +865,15 @@ export class SummaryView extends LitElement {
       daysWorked: 0,
       avgHoursPerDay: 0,
       avgEarningsPerDay: 0,
-      dailyData: []
+      // Add expense data
+      totalExpenses: 0,
+      expenseCategories: expenseCategories,
+      // Chart data
+      dailyData: period === 'year' ?
+        // For year view, create empty data for all 12 months
+        ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+          .map(month => ({ day: month, hours: 0, earnings: 0 })) :
+        []
     };
   }
 
@@ -658,9 +895,9 @@ export class SummaryView extends LitElement {
 
     if (this.period !== period) {
       // Reset current date to today when switching period types
-      if ((this.period === 'week' && (period === 'month')) ||
-          (this.period === 'month' && (period === 'week')) ||
-          (this.period === 'lastMonth' && (period === 'week' || period === 'month'))) {
+      if ((this.period === 'week' && (period === 'month' || period === 'year')) ||
+          (this.period === 'month' && (period === 'week' || period === 'year')) ||
+          (this.period === 'year' && (period === 'week' || period === 'month'))) {
         console.log("Resetting current date to today");
         this.currentDate = new Date();
       }
@@ -678,90 +915,77 @@ export class SummaryView extends LitElement {
     console.log("Current date before navigation:", this.currentDate);
 
     if (this.period === 'week') {
-      // Go to previous week
+      // Go to previous week - no restrictions on how far back we can go
       const newDate = new Date(this.currentDate);
       newDate.setDate(newDate.getDate() - 7);
       this.currentDate = newDate;
       console.log("New date after navigation:", this.currentDate);
       this.loadSummaryData();
     } else if (this.period === 'month') {
-      // Go to previous month
+      // Go to previous month - no restrictions on how far back we can go
       const newDate = new Date(this.currentDate);
       newDate.setMonth(newDate.getMonth() - 1);
       this.currentDate = newDate;
       console.log("New date after navigation:", this.currentDate);
       this.loadSummaryData();
-    } else if (this.period === 'lastMonth') {
-      // For lastMonth view, we don't need to change the date
-      // Our loadLastMonthData function always shows the previous month
-      console.log("Navigating to previous month in lastMonth view");
-      // We'll implement historical month navigation in a future update
-      // For now, just reload the data
+    } else if (this.period === 'year') {
+      // Go to previous year - no restrictions on how far back we can go
+      const newDate = new Date(this.currentDate);
+      newDate.setFullYear(newDate.getFullYear() - 1);
+      this.currentDate = newDate;
+      console.log("New date after navigation:", this.currentDate);
       this.loadSummaryData();
     }
   }
+
 
   navigateNext() {
     console.log("Navigating to next period:", this.period);
     console.log("Current date before navigation:", this.currentDate);
 
-    // Don't allow navigating to future periods
+    // Get current date for comparison (only used to determine if we're in the future)
     const now = new Date();
+    now.setHours(0, 0, 0, 0); // Normalize time for comparison
 
     if (this.period === 'week') {
-      // Calculate the start of the current week (Monday)
-      const currentWeekStart = new Date(now);
-      const day = currentWeekStart.getDay(); // 0 = Sunday, 1 = Monday, etc.
-      const diff = currentWeekStart.getDate() - day + (day === 0 ? -6 : 1); // Adjust to get Monday
-      currentWeekStart.setDate(diff);
-      currentWeekStart.setHours(0, 0, 0, 0); // Set to beginning of day
-
-      console.log("Current week start:", currentWeekStart);
-      console.log("Current date for comparison:", this.currentDate);
-
-      // If current date is before the start of the current week, allow navigation
+      // Calculate the next week's start date - no restrictions on future navigation
       const newDate = new Date(this.currentDate);
       newDate.setDate(newDate.getDate() + 7);
-      console.log("Potential new date:", newDate);
 
-      // Don't go beyond current week
-      if (newDate <= currentWeekStart) {
-        console.log("Navigating to next week");
-        this.currentDate = newDate;
-        this.loadSummaryData();
-      } else {
-        console.log("Cannot navigate beyond current week");
-      }
+      console.log("New date after navigation:", newDate);
+
+      // Allow unlimited navigation into the future
+      console.log("Navigating to next week");
+      this.currentDate = newDate;
+      this.loadSummaryData();
     } else if (this.period === 'month') {
-      // Get current month and year
-      const currentMonth = now.getMonth();
-      const currentYear = now.getFullYear();
-
-      console.log(`Current month/year: ${currentMonth}/${currentYear}`);
-      console.log(`This date month/year: ${this.currentDate.getMonth()}/${this.currentDate.getFullYear()}`);
-
-      // Calculate potential new date
+      // Calculate next month - no restrictions on future navigation
       const newDate = new Date(this.currentDate);
       newDate.setMonth(newDate.getMonth() + 1);
-      console.log("Potential new date:", newDate);
 
-      // Don't go beyond current month
-      if (
-        newDate.getFullYear() < currentYear ||
-        (newDate.getFullYear() === currentYear && newDate.getMonth() <= currentMonth)
-      ) {
-        console.log("Navigating to next month");
-        this.currentDate = newDate;
-        this.loadSummaryData();
-      } else {
-        console.log("Cannot navigate beyond current month");
-      }
-    } else if (this.period === 'lastMonth') {
-      // For lastMonth view, we don't need to change the date
-      // Our loadLastMonthData function always shows the previous month
-      console.log("Navigating to next month in lastMonth view");
-      // We'll implement historical month navigation in a future update
-      // For now, just reload the data
+      // Get the month and year of the new date
+      const newMonth = newDate.getMonth();
+      const newYear = newDate.getFullYear();
+
+      console.log(`New month/year: ${newMonth+1}/${newYear}`);
+
+      // Allow unlimited navigation into the future
+      console.log("Navigating to next month");
+      this.currentDate = newDate;
+      this.loadSummaryData();
+    } else if (this.period === 'year') {
+      // Calculate next year - no restrictions on future navigation
+      const newDate = new Date(this.currentDate);
+      newDate.setFullYear(newDate.getFullYear() + 1);
+
+      // Get the year of the new date
+      const newYear = newDate.getFullYear();
+
+      console.log(`New year: ${newYear}`);
+
+      // Allow unlimited navigation into the future
+      console.log("Navigating to next year");
+      this.currentDate = newDate;
       this.loadSummaryData();
     }
   }
@@ -791,10 +1015,10 @@ export class SummaryView extends LitElement {
           Month
         </div>
         <div
-          class="period-option ${this.period === 'lastMonth' ? 'active' : ''}"
-          @click=${() => this.handlePeriodChange('lastMonth')}
+          class="period-option ${this.period === 'year' ? 'active' : ''}"
+          @click=${() => this.handlePeriodChange('year')}
         >
-          Last Month
+          Year
         </div>
       </div>
 
@@ -805,7 +1029,8 @@ export class SummaryView extends LitElement {
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
           </svg>
         </div>
-        <div class="date-range">
+        <div class="date-range ${this.summaryData?.dateRange?.includes('Future:') ? 'future-date' :
+                                this.summaryData?.dateRange?.includes('Past:') ? 'past-date' : ''}">
           ${this.summaryData?.dateRange || 'No data'}
         </div>
         <div class="nav-arrow" @click=${() => this.navigateNext()}>
@@ -816,7 +1041,7 @@ export class SummaryView extends LitElement {
       </div>
 
       <!-- Earnings summary card -->
-      <div class="summary-card">
+      <div class="summary-card ${this.summaryData?.dateRange?.includes('Future:') ? 'future-projection' : ''}">
         <div class="card-title">Total Earnings</div>
         <div class="amount-large">
           ${formatCurrency(this.summaryData?.totalEarnings || 0, this.settings.currency)}
@@ -863,7 +1088,7 @@ export class SummaryView extends LitElement {
       </div>
 
       <!-- Hours summary card -->
-      <div class="summary-card">
+      <div class="summary-card ${this.summaryData?.dateRange?.includes('Future:') ? 'future-projection' : ''}">
         <div class="card-title">Hours Worked</div>
         <div class="amount-large">
           ${this.summaryData?.totalHours || 0}h
@@ -906,6 +1131,44 @@ export class SummaryView extends LitElement {
           }
         </div>
       </div>
+
+      <!-- Expenses summary card - temporarily disabled until we fix the data issue -->
+      <!-- We'll re-enable this once we've fixed the underlying data issue -->
+      ${false ? html`
+        <div class="summary-card ${this.summaryData?.dateRange?.includes('Future:') ? 'future-projection' : ''}">
+          <div class="card-title">Total Spending</div>
+          <div class="amount-large">
+            ${formatCurrency(this.summaryData?.totalExpenses || 0, this.settings.currency)}
+          </div>
+
+          <div class="breakdown">
+            ${this.summaryData?.expenseCategories?.map(category => html`
+              <div class="breakdown-item">
+                <div class="breakdown-label">${category.category}</div>
+                <div class="breakdown-value">
+                  ${formatCurrency(category.amount, this.settings.currency)}
+                  ${category.amount > 0 && this.summaryData?.totalExpenses > 0
+                    ? html`<span class="percentage">(${Math.round((category.amount / this.summaryData.totalExpenses) * 100)}%)</span>`
+                    : ''}
+                </div>
+              </div>
+            `)}
+          </div>
+
+          <!-- Expenses pie chart -->
+          <div class="chart-container">
+            ${this.summaryData?.expenseCategories?.some(cat => cat.amount > 0)
+              ? html`<expense-pie-chart
+                  .data=${this.summaryData.expenseCategories}
+                  currency=${this.settings.currency}
+                ></expense-pie-chart>`
+              : html`<div class="placeholder-chart">
+                  No expense data available
+                </div>`
+            }
+          </div>
+        </div>
+      ` : ''}
     `;
   }
 }

@@ -122,6 +122,11 @@ export async function deleteCreditCard(id) {
  */
 export async function recordCreditCardPayment(payment) {
   try {
+    // Debug logging
+    console.log('CREDIT CARD MANAGER: Recording payment:', payment);
+    console.log('CREDIT CARD MANAGER: Payment date:', payment.date);
+    console.log('CREDIT CARD MANAGER: Payment date type:', typeof payment.date);
+
     // Ensure required fields
     if (!payment.cardId || !payment.amount || !payment.date || !payment.type) {
       throw new Error('Missing required payment fields');
@@ -133,6 +138,8 @@ export async function recordCreditCardPayment(payment) {
       amount: parseFloat(payment.amount) || 0,
       createdAt: new Date().toISOString()
     };
+
+    console.log('CREDIT CARD MANAGER: Payment object to add to database:', paymentToAdd);
 
     // Add payment to database
     const paymentId = await db.creditCardPayments.add(paymentToAdd);
@@ -158,11 +165,31 @@ export async function recordCreditCardPayment(payment) {
  */
 export async function getCreditCardPayments(cardId) {
   try {
-    return await db.creditCardPayments
+    console.log(`CREDIT CARD MANAGER: Getting payments for card ID ${cardId}`);
+
+    const payments = await db.creditCardPayments
       .where('cardId')
       .equals(cardId)
       .reverse() // Most recent first
       .toArray();
+
+    console.log(`CREDIT CARD MANAGER: Found ${payments.length} payments for card ID ${cardId}`);
+
+    // Log each payment's date
+    payments.forEach((payment, index) => {
+      console.log(`CREDIT CARD MANAGER: Payment ${index + 1} date:`, payment.date);
+      console.log(`CREDIT CARD MANAGER: Payment ${index + 1} date type:`, typeof payment.date);
+
+      // Create a Date object from the date string to see how it's interpreted
+      if (payment.date) {
+        const dateObj = new Date(payment.date);
+        console.log(`CREDIT CARD MANAGER: Date object created from payment ${index + 1} date:`, dateObj);
+        console.log(`CREDIT CARD MANAGER: Date object toISOString:`, dateObj.toISOString());
+        console.log(`CREDIT CARD MANAGER: Date object toLocaleDateString:`, dateObj.toLocaleDateString());
+      }
+    });
+
+    return payments;
   } catch (error) {
     console.error(`Error getting payments for card ID ${cardId}:`, error);
     return [];
