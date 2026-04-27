@@ -1,23 +1,27 @@
-const CACHE_NAME = 'hour-halo-v1';
+// Bump this version whenever assets change — forces old caches to be replaced
+const CACHE_NAME = 'hour-halo-v2';
 
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
+  '/apple-touch-icon.png',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
-  '/apple-touch-icon.png',
+  '/icons/icon-1024.png',
 ];
 
-// Install: pre-cache shell assets
+// Install: pre-cache shell assets individually so one failure doesn't block install
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
+    caches.open(CACHE_NAME).then((cache) =>
+      Promise.allSettled(STATIC_ASSETS.map((url) => cache.add(url)))
+    )
   );
   self.skipWaiting();
 });
 
-// Activate: delete old caches
+// Activate: wipe every cache except the current one
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
@@ -27,15 +31,14 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch: network-first for JS/CSS bundles, cache-first for everything else
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Only handle same-origin requests
-  if (url.origin !== self.location.origin) return;
+  // Only handle same-origin GET requests
+  if (url.origin !== self.location.origin || request.method !== 'GET') return;
 
-  // Network-first for JS/CSS so updates are picked up immediately
+  // Network-first for JS/CSS bundles so code updates land immediately
   if (url.pathname.startsWith('/assets/')) {
     event.respondWith(
       fetch(request)
@@ -49,7 +52,25 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Cache-first for everything else (icons, manifest, HTML shell)
+  // Network-first for icons and manifest so updated assets are always fresh
+  if (
+    url.pathname.startsWith('/icons/') ||
+    url.pathname === '/apple-touch-icon.png' ||
+    url.pathname === '/manifest.json'
+  ) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          return response;
+        })
+        .catch(() => caches.match(request))
+    );
+    return;
+  }
+
+  // Cache-first for the HTML shell
   event.respondWith(
     caches.match(request).then((cached) => {
       if (cached) return cached;
