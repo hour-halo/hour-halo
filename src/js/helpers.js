@@ -10,9 +10,24 @@ export function formatCurrency(amount, currency = 'USD') {
   }).format(amount);
 }
 
+// Parse a YYYY-MM-DD string as a local midnight date (not UTC midnight).
+// Using new Date("YYYY-MM-DD") parses as UTC and shifts the date in non-UTC zones.
+export function parseLocalDate(dateString) {
+  const [year, month, day] = dateString.split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
+// Format a Date object as YYYY-MM-DD using local time components (not UTC).
+export function toLocalISODateString(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 // Format date to display format
 export function formatDate(dateString) {
-  const date = new Date(dateString);
+  const date = parseLocalDate(dateString);
   return new Intl.DateTimeFormat('en-US', {
     weekday: 'short',
     month: 'short',
@@ -32,7 +47,7 @@ export function formatTime(timeString) {
 
 // Get day name from date
 export function getDayName(dateString, short = false) {
-  const date = new Date(dateString);
+  const date = parseLocalDate(dateString);
   return new Intl.DateTimeFormat('en-US', {
     weekday: short ? 'short' : 'long'
   }).format(date);
@@ -40,13 +55,13 @@ export function getDayName(dateString, short = false) {
 
 // Get week range string (e.g., "Apr 1 - Apr 7")
 export function getWeekRangeString(weekId) {
-  // Parse the weekId (which is now the Monday date)
+  // Parse the weekId (which is the Monday date) as a local date
   const parts = weekId.split('-');
   const year = parseInt(parts[0], 10);
   const month = parseInt(parts[1], 10) - 1; // JS months are 0-indexed
   const day = parseInt(parts[2], 10);
 
-  // Create date objects for Monday (start) and Sunday (end)
+  // Create date objects for Monday (start) and Sunday (end) in local time
   const startDate = new Date(year, month, day);
   const endDate = new Date(year, month, day + 6);
 
@@ -57,9 +72,6 @@ export function getWeekRangeString(weekId) {
   // Get the day numbers
   const startDay = startDate.getDate();
   const endDay = endDate.getDate();
-
-  // Log for debugging
-  console.log(`Week range: ${startMonth} ${startDay} - ${endMonth} ${endDay} (${startDate.toDateString()} to ${endDate.toDateString()})`);
 
   // Return formatted string
   if (startMonth === endMonth) {
@@ -104,9 +116,6 @@ export function applyTheme(theme) {
     document.documentElement.classList.remove('dark');
     document.documentElement.style.colorScheme = 'light';
   }
-
-  // Log theme change for debugging
-  console.log(`Applied theme: ${theme} (isDark: ${isDark})`);
 }
 
 // Convert day name to day key (mon, tue, etc.)
@@ -120,24 +129,20 @@ export function getDayKey(dayName) {
     'saturday': 'sat',
     'sunday': 'sun'
   };
-
-  const key = dayMap[dayName.toLowerCase()];
-  console.log(`Converting day name "${dayName}" to key "${key}"`);
-  return key;
+  return dayMap[dayName.toLowerCase()];
 }
 
 // Get day key from date (mon, tue, etc.)
 export function getDayKeyFromDate(dateStr) {
-  const date = new Date(dateStr);
-  const day = date.getDay(); // 0 = Sunday, 1 = Monday, ...
+  const date = parseLocalDate(dateStr);
   const dayKeys = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
-  console.log(`Date: ${dateStr}, Day: ${day}, DayKey: ${dayKeys[day]}, DayName: ${getDayName(dateStr)}`);
-  return dayKeys[day];
+  return dayKeys[date.getDay()];
 }
 
 // Get month range string (e.g., "April 2023" or "April 1 - 30, 2023")
 export function getMonthRangeString(dateStr, includeRange = false) {
-  const date = new Date(dateStr);
+  // Accept both Date objects and YYYY-MM-DD strings
+  const date = (dateStr instanceof Date) ? dateStr : parseLocalDate(dateStr);
   const year = date.getFullYear();
   const month = date.getMonth();
 

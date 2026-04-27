@@ -665,8 +665,9 @@ export class HistoryView extends LitElement {
 
   formatDate(dateString) {
     if (!dateString) return '';
-
-    const date = new Date(dateString);
+    // Parse as local date to avoid UTC midnight shifting the date in non-UTC zones
+    const [year, month, day] = dateString.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
     return date.toLocaleDateString('en-US', {
       weekday: 'short',
       month: 'short',

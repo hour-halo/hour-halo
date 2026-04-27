@@ -4,7 +4,7 @@
  */
 
 import { LitElement, html, css } from 'lit';
-import { formatCurrency, getWeekRangeString, getMonthRangeString } from '../js/helpers.js';
+import { formatCurrency, getWeekRangeString, getMonthRangeString, toLocalISODateString } from '../js/helpers.js';
 import db from '../db/db.js';
 
 // Import chart component
@@ -381,17 +381,13 @@ export class SummaryView extends LitElement {
     // Clone the date to avoid modifying the original
     const workingDate = new Date(date);
 
-    // Get week ID for the specified date
+    // Get week ID for the specified date using local date arithmetic
     const day = workingDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
     const diff = workingDate.getDate() - day + (day === 0 ? -6 : 1); // Adjust to get Monday
     const monday = new Date(workingDate);
     monday.setDate(diff);
-    monday.setHours(0, 0, 0, 0); // Set to beginning of day
-    const weekId = monday.toISOString().split('T')[0];
-
-    console.log(`Loading week data for date: ${workingDate.toISOString()}`);
-    console.log(`Calculated Monday: ${monday.toISOString()}`);
-    console.log(`Week ID: ${weekId}`);
+    // Use local date components to avoid UTC offset shifting the date
+    const weekId = toLocalISODateString(monday);
 
     // Load the week data
     const week = await db.weeks.get(weekId);
@@ -473,25 +469,18 @@ export class SummaryView extends LitElement {
     // Create a map to store daily data
     const dailyData = {};
 
-    // Process each week
+    // Process each week, accumulating only days that fall within the target month
     for (const week of weeks) {
-      console.log(`Processing week: ${week.id}`);
-      totalHours += week.totalHours || 0;
-      totalTips += week.totalTips || 0;
-
-      // Process daily data
       if (week.days) {
         for (const [dayKey, dayData] of Object.entries(week.days)) {
-          // Check if this day falls within the current month
           const dayDate = this.getDayDateFromWeekAndDayKey(week.id, dayKey);
 
           if (dayDate && dayDate.getMonth() === month && dayDate.getFullYear() === year) {
-            console.log(`Processing day ${dayKey} (${dayDate.toISOString()}) with hours: ${dayData.hours}`);
-
             if (dayData.hours > 0) {
+              totalHours += dayData.hours || 0;
+              totalTips += dayData.tips || 0;
               daysWorked++;
 
-              // Add to daily data for chart
               const dayName = this.getDayNameFromKey(dayKey);
               if (!dailyData[dayName]) {
                 dailyData[dayName] = { hours: 0, tips: 0 };
@@ -500,8 +489,6 @@ export class SummaryView extends LitElement {
               dailyData[dayName].hours += dayData.hours || 0;
               dailyData[dayName].tips += dayData.tips || 0;
             }
-          } else if (dayDate) {
-            console.log(`Skipping day ${dayKey} (${dayDate.toISOString()}) as it's not in the target month`);
           }
         }
       }
@@ -556,10 +543,10 @@ export class SummaryView extends LitElement {
   // Helper method to get the actual date for a day in a week
   getDayDateFromWeekAndDayKey(weekId, dayKey) {
     try {
-      // weekId is the Monday date of the week
-      const monday = new Date(weekId);
+      // Parse weekId as a local date (not UTC) to avoid timezone-induced day shifts
+      const [year, month, day] = weekId.split('-').map(Number);
+      const monday = new Date(year, month - 1, day);
 
-      // Map day keys to offsets from Monday
       const dayOffsets = {
         'mon': 0,
         'tue': 1,
@@ -571,16 +558,13 @@ export class SummaryView extends LitElement {
       };
 
       if (dayOffsets[dayKey] === undefined) {
-        console.error(`Invalid day key: ${dayKey}`);
         return null;
       }
 
-      // Create a new date by adding the offset to Monday
       const dayDate = new Date(monday);
       dayDate.setDate(monday.getDate() + dayOffsets[dayKey]);
       return dayDate;
     } catch (error) {
-      console.error(`Error getting date for week ${weekId} and day ${dayKey}:`, error);
       return null;
     }
   }
@@ -589,40 +573,28 @@ export class SummaryView extends LitElement {
 
   // Helper method to get all weeks in a month
   async getWeeksInMonth(year, month) {
-    console.log(`Getting weeks in month: ${year}-${month+1}`);
-
-    // Get all weeks from the database
     const allWeeks = await db.weeks.toArray();
-    console.log(`Total weeks in database: ${allWeeks.length}`);
 
     // A week belongs to a month if any of its days fall within that month
-    const weeksInMonth = allWeeks.filter(week => {
-      // Check if this week has any days in the target month
+    return allWeeks.filter(week => {
       try {
-        // The week ID is the Monday date
-        const monday = new Date(week.id);
+        // Parse week ID as local date (not UTC) to avoid timezone-induced day shifts
+        const [wYear, wMonth, wDay] = week.id.split('-').map(Number);
+        const monday = new Date(wYear, wMonth - 1, wDay);
 
-        // Check if any day in this week falls within our target month
         for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
           const currentDay = new Date(monday);
           currentDay.setDate(monday.getDate() + dayOffset);
 
           if (currentDay.getFullYear() === year && currentDay.getMonth() === month) {
-            console.log(`Week ${week.id} has day ${currentDay.toISOString()} in target month`);
             return true;
           }
         }
-
-        console.log(`Week ${week.id} has no days in target month ${year}-${month+1}`);
         return false;
       } catch (error) {
-        console.error(`Error processing week ${week.id}:`, error);
         return false;
       }
     });
-
-    console.log(`Found ${weeksInMonth.length} weeks with days in month ${year}-${month+1}`);
-    return weeksInMonth;
   }
 
   createEmptySummaryData(period = 'week') {
