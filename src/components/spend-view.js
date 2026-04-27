@@ -375,15 +375,16 @@ export class SpendView extends LitElement {
   }
 
   getCurrentWeekId() {
-    // Get Monday of current week
     const now = new Date();
-    const day = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
-    const diff = now.getDate() - day + (day === 0 ? -6 : 1); // Adjust to get Monday
+    const day = now.getDay();
+    const diff = now.getDate() - day + (day === 0 ? -6 : 1);
     const monday = new Date(now);
     monday.setDate(diff);
-
-    // Format as YYYY-MM-DD
-    return monday.toISOString().split('T')[0];
+    // Use local date components to avoid UTC offset shifting the date
+    const year = monday.getFullYear();
+    const month = String(monday.getMonth() + 1).padStart(2, '0');
+    const d = String(monday.getDate()).padStart(2, '0');
+    return `${year}-${month}-${d}`;
   }
 
   getCurrentMonthId() {
@@ -401,19 +402,19 @@ export class SpendView extends LitElement {
 
   navigatePrevious() {
     if (this.activeView === 'weekly') {
-      // Navigate to previous week
       const [year, month, day] = this.weekId.split('-').map(Number);
       const currentMonday = new Date(year, month - 1, day);
       currentMonday.setDate(currentMonday.getDate() - 7);
-
-      this.weekId = currentMonday.toISOString().split('T')[0];
+      // Use local date components to avoid UTC offset shifting the date
+      const y = currentMonday.getFullYear();
+      const m = String(currentMonday.getMonth() + 1).padStart(2, '0');
+      const d = String(currentMonday.getDate()).padStart(2, '0');
+      this.weekId = `${y}-${m}-${d}`;
       this.loadWeekData();
     } else if (this.activeView === 'monthly') {
-      // Navigate to previous month
       const [year, month] = this.monthId.split('-').map(Number);
       const prevMonth = month === 1 ? 12 : month - 1;
       const prevYear = month === 1 ? year - 1 : year;
-
       this.monthId = `${prevYear}-${String(prevMonth).padStart(2, '0')}`;
       this.loadMonthData();
     }
@@ -423,25 +424,25 @@ export class SpendView extends LitElement {
     const now = new Date();
 
     if (this.activeView === 'weekly') {
-      // Navigate to next week (but not beyond current week)
       const [year, month, day] = this.weekId.split('-').map(Number);
       const currentMonday = new Date(year, month - 1, day);
       const nextMonday = new Date(currentMonday);
       nextMonday.setDate(nextMonday.getDate() + 7);
 
-      // Don't go beyond current week
       if (nextMonday <= now) {
-        this.weekId = nextMonday.toISOString().split('T')[0];
+        // Use local date components to avoid UTC offset shifting the date
+        const y = nextMonday.getFullYear();
+        const m = String(nextMonday.getMonth() + 1).padStart(2, '0');
+        const d = String(nextMonday.getDate()).padStart(2, '0');
+        this.weekId = `${y}-${m}-${d}`;
         this.loadWeekData();
       }
     } else if (this.activeView === 'monthly') {
-      // Navigate to next month (but not beyond current month)
       const [year, month] = this.monthId.split('-').map(Number);
       const nextMonth = month === 12 ? 1 : month + 1;
       const nextYear = month === 12 ? year + 1 : year;
       const nextMonthDate = new Date(nextYear, nextMonth - 1, 1);
 
-      // Don't go beyond current month
       if (nextMonthDate <= now) {
         this.monthId = `${nextYear}-${String(nextMonth).padStart(2, '0')}`;
         this.loadMonthData();
@@ -478,18 +479,20 @@ export class SpendView extends LitElement {
   }
 
   formatDate(dateString) {
-    const date = new Date(dateString);
+    // Parse as local date to avoid UTC midnight shifting the date in non-UTC zones
+    const [year, month, day] = dateString.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
 
-    // Check if it's today or yesterday
-    if (date.toDateString() === today.toDateString()) {
+    if (date.getTime() === today.getTime()) {
       return 'Today';
-    } else if (date.toDateString() === yesterday.toDateString()) {
+    } else if (date.getTime() === yesterday.getTime()) {
       return 'Yesterday';
     } else {
-      // Format as "Mon, Apr 5"
       return date.toLocaleString('en-US', {
         weekday: 'short',
         month: 'short',
