@@ -1,14 +1,17 @@
 // Bump this version whenever assets change — forces old caches to be replaced
-const CACHE_NAME = 'hour-halo-v2';
+const CACHE_NAME = 'hour-halo-v3';
+
+// Derive the base path from the SW location so this works on any subpath (e.g. /hour-halo/)
+const BASE = self.registration.scope.replace(/\/$/, '');
 
 const STATIC_ASSETS = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/apple-touch-icon.png',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png',
-  '/icons/icon-1024.png',
+  `${BASE}/`,
+  `${BASE}/index.html`,
+  `${BASE}/manifest.json`,
+  `${BASE}/apple-touch-icon.png`,
+  `${BASE}/icons/icon-192.png`,
+  `${BASE}/icons/icon-512.png`,
+  `${BASE}/icons/icon-1024.png`,
 ];
 
 // Install: pre-cache shell assets individually so one failure doesn't block install
