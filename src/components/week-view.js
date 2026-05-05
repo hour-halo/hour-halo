@@ -215,14 +215,15 @@ export class WeekView extends LitElement {
     this.isModalOpen = false;
     this.initialLoad = true;
 
-    // Check if there's a week parameter in the URL
+    // Read ?week= param once for deep-link support, then immediately clean the URL
     const urlParams = new URLSearchParams(window.location.search);
     const weekParam = urlParams.get('week');
-    if (weekParam) {
-      // Validate the date format (YYYY-MM-DD)
-      if (/^\d{4}-\d{2}-\d{2}$/.test(weekParam)) {
-        this.weekId = weekParam;
-      }
+    if (weekParam && /^\d{4}-\d{2}-\d{2}$/.test(weekParam)) {
+      this.weekId = weekParam;
+    }
+    if (window.location.search) {
+      const cleanUrl = window.location.pathname + window.location.hash;
+      window.history.replaceState({}, '', cleanUrl);
     }
   }
 
@@ -300,10 +301,7 @@ export class WeekView extends LitElement {
 
     this.week = week;
 
-    // Update the URL to reflect the current week
-    const url = new URL(window.location);
-    url.searchParams.set('week', this.weekId);
-    window.history.pushState({}, '', url);
+    // Keep URL clean — no week param persisted so shared links always load current week
 
     // Show a toast notification when changing weeks
     if (this.initialLoad) {
